@@ -8,7 +8,6 @@ export interface StockQuote {
   low: number;
   open: number;
   previousClose: number;
-  volume: number;
 }
 
 export interface StockSearchResult {
@@ -25,7 +24,6 @@ export interface StockHistory {
   high: number;
   low: number;
   open: number;
-  volume: number;
 }
 
 export interface WatchlistItem {

@@ -1,16 +1,33 @@
 import { StockQuote, StockSearchResult, StockHistory, TimeRange, ChartDataPoint } from '../types';
 
-const API_KEY = 'B00GQ63MNG57P7JE';
-const BASE_URL = 'https://www.alphavantage.co/query';
+const API_KEY = 'd7tm9kpr01qlbd3kmpcgd7tm9kpr01qlbd3kmpd0';
+const BASE_URL = 'https://finnhub.io/api/v1';
 
-async function fetchAPI(params: Record<string, string>): Promise<any> {
-  const url = new URL(BASE_URL);
+const POLYGON_API_KEY = 'vQssTpYb4gJFuOo2Z_1EJQzLH1vKhAVr';
+const POLYGON_BASE_URL = 'https://api.polygon.io/v2';
+
+async function fetchAPI(endpoint: string, params: Record<string, string>): Promise<any> {
+  const url = new URL(BASE_URL + endpoint);
   Object.entries(params).forEach(([key, value]) => {
     url.searchParams.append(key, value);
   });
   
   const response = await fetch(url.toString());
   return response.json();
+}
+
+async function fetchPolygonAPI(endpoint: string): Promise<any> {
+  const url = new URL(POLYGON_BASE_URL + endpoint);
+  url.searchParams.append('apiKey', POLYGON_API_KEY);
+  url.searchParams.append('adjusted', 'true');
+  url.searchParams.append('sort', 'asc');
+  
+  const response = await fetch(url.toString());
+  return response.json();
+}
+
+function formatDate(date: Date): string {
+  return date.toISOString().split('T')[0];
 }
 
 const MOCK_NAMES: Record<string, string> = {
@@ -54,7 +71,6 @@ function generateMockQuote(symbol: string): StockQuote {
     low: basePrice - Math.random() * 5,
     open: basePrice + (Math.random() - 0.5) * 3,
     previousClose: basePrice,
-    volume: Math.floor(Math.random() * 50000000) + 10000000,
   };
 }
 
@@ -80,7 +96,6 @@ function generateMockHistory(days: number): StockHistory[] {
       high: Math.round(high * 100) / 100,
       low: Math.round(low * 100) / 100,
       open: Math.round(open * 100) / 100,
-      volume: Math.floor(Math.random() * 10000000) + 1000000,
     });
   }
   
@@ -114,6 +129,21 @@ function generateMockIntraday(): ChartDataPoint[] {
 export async function searchStocks(query: string): Promise<StockSearchResult[]> {
   if (!query || query.length < 1) return [];
   
+  try {
+    const data = await fetchAPI('/search', { q: query, token: API_KEY });
+    if (data && data.result && data.result.length > 0) {
+      return data.result.slice(0, 10).map((r: any) => ({
+        symbol: r.symbol,
+        name: r.description,
+        type: r.type,
+        region: 'US', // Finnhub primarily supports US equities for free search
+        currency: 'USD'
+      }));
+    }
+  } catch (error) {
+    console.error('Search error, using mock data:', error);
+  }
+  
   const mockResults: StockSearchResult[] = [
     { symbol: 'AAPL', name: 'Apple Inc.', type: 'Equity', region: 'United States', currency: 'USD' },
     { symbol: 'GOOGL', name: 'Alphabet Inc.', type: 'Equity', region: 'United States', currency: 'USD' },
@@ -135,33 +165,23 @@ export async function searchStocks(query: string): Promise<StockSearchResult[]> 
 
 export async function getQuote(symbol: string): Promise<StockQuote> {
   try {
-    const data = await fetchAPI({
-      function: 'GLOBAL_QUOTE',
-      symbol: symbol,
-      apikey: API_KEY,
-    });
+    const data = await fetchAPI('/quote', { symbol, token: API_KEY });
     
-    if (data['Error Message'] || data['Note'] || !data['Global Quote']) {
-      console.log('API limit reached, using mock data');
-      return generateMockQuote(symbol);
-    }
-    
-    const quote = data['Global Quote'];
-    if (!quote || Object.keys(quote).length === 0) {
+    if (!data || data.c === undefined || data.c === 0) {
+      console.log('API limit reached or invalid symbol, using mock data');
       return generateMockQuote(symbol);
     }
     
     return {
-      symbol: quote['01. symbol'],
+      symbol: symbol,
       name: MOCK_NAMES[symbol] || symbol,
-      price: parseFloat(quote['05. price']),
-      change: parseFloat(quote['09. change']),
-      changePercent: parseFloat(quote['10. change percent']?.replace('%', '') || '0'),
-      high: parseFloat(quote['03. high']),
-      low: parseFloat(quote['04. low']),
-      open: parseFloat(quote['02. open']),
-      previousClose: parseFloat(quote['08. previous close']),
-      volume: parseInt(quote['06. volume']),
+      price: data.c,
+      change: data.d,
+      changePercent: data.dp,
+      high: data.h,
+      low: data.l,
+      open: data.o,
+      previousClose: data.pc,
     };
   } catch (error) {
     console.error('Quote error, using mock data:', error);
@@ -169,73 +189,70 @@ export async function getQuote(symbol: string): Promise<StockQuote> {
   }
 }
 
-function getDaysForRange(range: TimeRange): number {
+function getPolygonParamsForRange(range: TimeRange): { multiplier: string, timespan: string, daysBack: number } {
   switch (range) {
-    case '1D': return 1;
-    case '1W': return 7;
-    case '1M': return 30;
-    case '1Y': return 365;
-    default: return 30;
+    case '1D': return { multiplier: '5', timespan: 'minute', daysBack: 3 }; // 3 days to account for weekends
+    case '1W': return { multiplier: '1', timespan: 'hour', daysBack: 7 };
+    case '1M': return { multiplier: '1', timespan: 'day', daysBack: 30 };
+    case '1Y': return { multiplier: '1', timespan: 'week', daysBack: 365 };
+    default: return { multiplier: '1', timespan: 'day', daysBack: 30 };
   }
 }
 
 export async function getStockHistory(symbol: string, range: TimeRange = '1M'): Promise<StockHistory[]> {
-  const days = getDaysForRange(range);
+  const params = getPolygonParamsForRange(range);
   
+  const toDate = new Date();
+  const fromDate = new Date();
+  fromDate.setDate(toDate.getDate() - params.daysBack);
+
+  const toStr = formatDate(toDate);
+  const fromStr = formatDate(fromDate);
+
   try {
-    const data = await fetchAPI({
-      function: 'TIME_SERIES_DAILY',
-      symbol: symbol,
-      outputsize: days > 100 ? 'full' : 'compact',
-      apikey: API_KEY,
-    });
+    const data = await fetchPolygonAPI(`/aggs/ticker/${symbol}/range/${params.multiplier}/${params.timespan}/${fromStr}/${toStr}`);
     
-    if (data['Error Message'] || data['Note'] || !data['Time Series (Daily)']) {
-      console.log('API limit reached, using mock data');
-      return generateMockHistory(days);
+    if (!data || (data.status !== 'OK' && data.status !== 'DELAYED') || !data.results || data.results.length === 0) {
+      console.log('Polygon API returned no data or error, using mock data:', data.status);
+      return generateMockHistory(params.daysBack);
     }
     
-    const timeSeries = data['Time Series (Daily)'];
-    const entries = Object.entries(timeSeries).slice(0, days).reverse();
-    
-    return entries.map(([date, values]: [string, any]) => ({
-      date: date,
-      open: parseFloat(values['1. open']),
-      high: parseFloat(values['2. high']),
-      low: parseFloat(values['3. low']),
-      close: parseFloat(values['4. close']),
-      volume: parseInt(values['5. volume']),
+    return data.results.map((r: any) => ({
+      date: new Date(r.t).toISOString(),
+      close: r.c,
+      high: r.h,
+      low: r.l,
+      open: r.o,
     }));
   } catch (error) {
     console.error('History error, using mock data:', error);
-    return generateMockHistory(days);
+    return generateMockHistory(params.daysBack);
   }
 }
 
 export async function getIntradayData(symbol: string): Promise<ChartDataPoint[]> {
+  const params = getPolygonParamsForRange('1D');
+  const toDate = new Date();
+  const fromDate = new Date();
+  fromDate.setDate(toDate.getDate() - params.daysBack);
+
+  const toStr = formatDate(toDate);
+  const fromStr = formatDate(fromDate);
+
   try {
-    const data = await fetchAPI({
-      function: 'TIME_SERIES_INTRADAY',
-      symbol: symbol,
-      interval: '5min',
-      outputsize: 'compact',
-      apikey: API_KEY,
-    });
+    const data = await fetchPolygonAPI(`/aggs/ticker/${symbol}/range/${params.multiplier}/${params.timespan}/${fromStr}/${toStr}`);
     
-    if (data['Error Message'] || data['Note'] || !data['Time Series (5min)']) {
-      console.log('API limit reached, using mock data');
+    if (!data || (data.status !== 'OK' && data.status !== 'DELAYED') || !data.results || data.results.length === 0) {
+      console.log('Polygon API limit reached or delayed, using mock data:', data.status);
       return generateMockIntraday();
     }
     
-    const timeSeries = data['Time Series (5min)'];
-    const entries = Object.entries(timeSeries).slice(0, 78).reverse();
-    
-    return entries.map(([datetime, values]: [string, any]) => ({
-      date: datetime,
-      price: parseFloat(values['4. close']),
-      open: parseFloat(values['1. open']),
-      high: parseFloat(values['2. high']),
-      low: parseFloat(values['3. low']),
+    return data.results.map((r: any) => ({
+      date: new Date(r.t).toISOString(),
+      price: r.c,
+      open: r.o,
+      high: r.h,
+      low: r.l,
     }));
   } catch (error) {
     console.error('Intraday error, using mock data:', error);
@@ -245,8 +262,7 @@ export async function getIntradayData(symbol: string): Promise<ChartDataPoint[]>
 
 export async function getChartData(symbol: string, range: TimeRange): Promise<ChartDataPoint[]> {
   if (range === '1D') {
-    const intraday = await getIntradayData(symbol);
-    return intraday;
+    return await getIntradayData(symbol);
   }
   
   const history = await getStockHistory(symbol, range);

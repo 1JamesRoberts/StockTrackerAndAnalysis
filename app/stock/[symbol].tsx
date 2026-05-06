@@ -1,6 +1,7 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { useLocalSearchParams, Stack } from 'expo-router';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
+import { HeaderBackButton } from '@react-navigation/elements';
 import { useStockQuote, useChartData } from '../../lib/hooks/useStock';
 import { useWatchlistStore } from '../../lib/store/watchlist';
 import { InteractiveChart } from '../../components/InteractiveChart';
@@ -8,6 +9,7 @@ import { TimeRange } from '../../lib/types';
 
 export default function StockDetailsScreen() {
   const { symbol } = useLocalSearchParams<{ symbol: string }>();
+  const router = useRouter();
   const [timeRange, setTimeRange] = useState<TimeRange>('1M');
   const { data: quote, isLoading: quoteLoading } = useStockQuote(symbol);
   const { data: chartData, isLoading: chartLoading } = useChartData(symbol, timeRange);
@@ -28,85 +30,86 @@ export default function StockDetailsScreen() {
     setTimeRange(range);
   };
   
-  if (quoteLoading || !quote) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-    );
-  }
-  
-  const isPositive = quote.change >= 0;
+  const isPositive = quote ? quote.change >= 0 : true;
   
   return (
     <>
       <Stack.Screen 
         options={{ 
-          headerTitle: quote.symbol,
-          headerRight: () => (
+          headerTitle: quote ? quote.symbol : 'Loading...',
+          headerLeft: router.canGoBack() ? undefined : (props) => (
+            <HeaderBackButton 
+              {...props}
+              tintColor="#007AFF"
+              onPress={() => router.replace('/')} 
+            />
+          ),
+          headerRight: () => quote ? (
             <TouchableOpacity onPress={handleToggleWatchlist} style={styles.headerButton}>
               <Text style={[styles.headerButtonText, inWatchlist && styles.addedText]}>
                 {inWatchlist ? '✓ Added' : '+ Add'}
               </Text>
             </TouchableOpacity>
-          ),
+          ) : null,
         }} 
       />
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.priceCard}>
-          <Text style={styles.symbolText}>{quote.symbol}</Text>
-          <Text style={styles.companyName}>{quote.name}</Text>
-          
-          <View style={styles.priceRow}>
-            <Text style={styles.priceText}>${quote.price.toFixed(2)}</Text>
-          </View>
-          
-          <View style={[
-            styles.changeContainer,
-            isPositive ? styles.positiveBg : styles.negativeBg
-          ]}>
-            <Text style={[
-              styles.changeText,
-              isPositive ? styles.positiveText : styles.negativeText
+      {quoteLoading || !quote ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      ) : (
+        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+          <View style={styles.priceCard}>
+            <Text style={styles.symbolText}>{quote.symbol}</Text>
+            <Text style={styles.companyName}>{quote.name}</Text>
+            
+            <View style={styles.priceRow}>
+              <Text style={styles.priceText}>${quote.price.toFixed(2)}</Text>
+            </View>
+            
+            <View style={[
+              styles.changeContainer,
+              isPositive ? styles.positiveBg : styles.negativeBg
             ]}>
-              {isPositive ? '▲' : '▼'} ${Math.abs(quote.change).toFixed(2)} ({Math.abs(quote.changePercent).toFixed(2)}%)
-            </Text>
-          </View>
-        </View>
-        
-        <InteractiveChart 
-          data={chartData || []}
-          isPositive={isPositive}
-          timeRange={timeRange}
-          onTimeRangeChange={handleTimeRangeChange}
-        />
-        
-        <View style={styles.statsCard}>
-          <Text style={styles.sectionTitle}>Statistics</Text>
-          <View style={styles.statsGrid}>
-            <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Open</Text>
-              <Text style={styles.statValue}>${quote.open.toFixed(2)}</Text>
-            </View>
-            <View style={styles.statRow}>
-              <Text style={styles.statLabel}>High</Text>
-              <Text style={styles.statValue}>${quote.high.toFixed(2)}</Text>
-            </View>
-            <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Low</Text>
-              <Text style={styles.statValue}>${quote.low.toFixed(2)}</Text>
-            </View>
-            <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Prev Close</Text>
-              <Text style={styles.statValue}>${quote.previousClose.toFixed(2)}</Text>
-            </View>
-            <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Volume</Text>
-              <Text style={styles.statValue}>{(quote.volume / 1000000).toFixed(2)}M</Text>
+              <Text style={[
+                styles.changeText,
+                isPositive ? styles.positiveText : styles.negativeText
+              ]}>
+                {isPositive ? '▲' : '▼'} ${Math.abs(quote.change).toFixed(2)} ({Math.abs(quote.changePercent).toFixed(2)}%)
+              </Text>
             </View>
           </View>
-        </View>
-      </ScrollView>
+          
+          <InteractiveChart 
+            data={chartData || []}
+            isPositive={isPositive}
+            timeRange={timeRange}
+            onTimeRangeChange={handleTimeRangeChange}
+          />
+          
+          <View style={styles.statsCard}>
+            <Text style={styles.sectionTitle}>Statistics</Text>
+            <View style={styles.statsGrid}>
+              <View style={styles.statRow}>
+                <Text style={styles.statLabel}>Open</Text>
+                <Text style={styles.statValue}>${quote.open.toFixed(2)}</Text>
+              </View>
+              <View style={styles.statRow}>
+                <Text style={styles.statLabel}>High</Text>
+                <Text style={styles.statValue}>${quote.high.toFixed(2)}</Text>
+              </View>
+              <View style={styles.statRow}>
+                <Text style={styles.statLabel}>Low</Text>
+                <Text style={styles.statValue}>${quote.low.toFixed(2)}</Text>
+              </View>
+              <View style={styles.statRow}>
+                <Text style={styles.statLabel}>Prev Close</Text>
+                <Text style={styles.statValue}>${quote.previousClose.toFixed(2)}</Text>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+      )}
     </>
   );
 }

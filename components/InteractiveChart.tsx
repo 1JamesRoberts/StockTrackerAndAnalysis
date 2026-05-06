@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, Text, Pressable } from 'react-native';
+import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { ChartDataPoint, TimeRange } from '../lib/types';
 
 interface InteractiveChartProps {
@@ -49,7 +50,7 @@ export function InteractiveChart({
     maxPrice = Math.ceil(Math.max(...prices) * 1.02);
     
     const priceRange = maxPrice - minPrice || 1;
-    const availableHeight = CHART_HEIGHT - PADDING_TOP - PADDING_BOTTOM;
+    const availableHeight = CHART_HEIGHT;
     
     data.forEach((item, index) => {
       const xPercent = data.length > 1 ? index / (data.length - 1) : 0.5;
@@ -89,6 +90,19 @@ export function InteractiveChart({
       wrapper.removeEventListener('mouseleave', () => setHoverIndex(null));
     };
   }, [points.length, chartWidth]);
+
+  const svgHeight = CHART_HEIGHT;
+  let pathD = '';
+  points.forEach((p, i) => {
+    const x = p.x - PADDING_LEFT;
+    const y = p.y - PADDING_TOP;
+    if (i === 0) {
+      pathD += `M ${x} ${y}`;
+    } else {
+      pathD += ` L ${x} ${y}`;
+    }
+  });
+  const areaPathD = pathD ? `${pathD} L ${chartWidth} ${svgHeight} L 0 ${svgHeight} Z` : '';
 
   return (
     <View style={styles.container}>
@@ -142,51 +156,20 @@ export function InteractiveChart({
             </View>
 
             <View style={[styles.chartContent, { left: PADDING_LEFT, width: chartWidth }]}>
-              {points.map((p, i) => {
-                if (i === points.length - 1) return null;
-                const nextP = points[i + 1];
-                const width = nextP.x - p.x;
-                const avgY = (p.y + nextP.y) / 2;
-                const bottomY = CHART_HEIGHT - PADDING_BOTTOM;
-                return (
-                  <View
-                    key={`fill-${i}`}
-                    style={[
-                      styles.areaFill,
-                      {
-                        left: p.x - PADDING_LEFT,
-                        top: avgY - PADDING_TOP,
-                        width: width + 1,
-                        height: bottomY - (avgY - PADDING_TOP),
-                        backgroundColor: color,
-                      }
-                    ]}
-                  />
-                );
-              })}
-              
-              {points.slice(0, -1).map((p, i) => {
-                const np = points[i + 1];
-                const dx = np.x - p.x;
-                const dy = np.y - p.y;
-                const len = Math.sqrt(dx * dx + dy * dy);
-                const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-                return (
-                  <View
-                    key={i}
-                    style={[
-                      styles.lineSegment,
-                      {
-                        left: p.x - PADDING_LEFT,
-                        top: p.y - PADDING_TOP,
-                        width: len,
-                        backgroundColor: color,
-                        transform: [{ rotate: `${angle}deg` }],
-                      }
-                    ]}
-                  />
-                );
-              })}
+              {points.length > 0 && (
+                <View style={{ position: 'absolute', left: 0, top: PADDING_TOP, width: chartWidth, height: svgHeight, overflow: 'hidden' }}>
+                  <Svg width={chartWidth} height={svgHeight}>
+                    <Defs>
+                      <LinearGradient id="gradient" x1="0" y1="0" x2="0" y2="1">
+                        <Stop offset="0" stopColor={color} stopOpacity="0.3" />
+                        <Stop offset="1" stopColor={color} stopOpacity="0.0" />
+                      </LinearGradient>
+                    </Defs>
+                    <Path d={areaPathD} fill="url(#gradient)" />
+                    <Path d={pathD} stroke={color} strokeWidth="2" fill="none" />
+                  </Svg>
+                </View>
+              )}
 
               {points.map((p, i) => {
                 const isSelected = i === hoverIndex;
@@ -197,7 +180,7 @@ export function InteractiveChart({
                       styles.pointWrapper,
                       {
                         left: p.x - PADDING_LEFT - 6,
-                        top: p.y - PADDING_TOP - 6,
+                        top: p.y - 6,
                       }
                     ]}
                   >
