@@ -106,6 +106,10 @@ export default function StockDetailsScreen() {
                 <Text style={styles.statLabel}>Prev Close</Text>
                 <Text style={styles.statValue}>${quote.previousClose.toFixed(2)}</Text>
               </View>
+              <View style={styles.statRow}>
+                <Text style={styles.statLabel}>Volume</Text>
+                <Text style={styles.statValue}>{(quote.volume / 1000000).toFixed(2)}M</Text>
+              </View>
             </View>
           </View>
         </ScrollView>
