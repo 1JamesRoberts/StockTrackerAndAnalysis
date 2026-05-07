@@ -2,7 +2,8 @@ import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useStockSearch } from '../../lib/hooks/useStock';
-import { useWatchlistStore } from '../../lib/store/watchlist';
+import { usePortfolioStore } from '../../lib/store/portfolio';
+import { AddPortfolioItemModal } from '../../components/AddPortfolioItemModal';
 import { SearchInput } from '../../components/SearchInput';
 import { SearchResultItem } from '../../components/SearchResultItem';
 import { StockSearchResult } from '../../lib/types';
@@ -11,25 +12,35 @@ export default function SearchScreen() {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const { data: results, isLoading } = useStockSearch(query);
-  const { addStock, removeStock, isInWatchlist } = useWatchlistStore();
+  const { addStock, isInPortfolio } = usePortfolioStore();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedStock, setSelectedStock] = useState<StockSearchResult | null>(null);
   
   const handleStockPress = (result: StockSearchResult) => {
     router.push(`/stock/${result.symbol}`);
   };
   
   const handleToggleWatchlist = (result: StockSearchResult) => {
-    if (isInWatchlist(result.symbol)) {
-      removeStock(result.symbol);
-    } else {
-      addStock(result.symbol, result.name);
-    }
+    setSelectedStock(result);
+    setModalVisible(true);
+  };
+  
+  const handleAddPosition = (shares: number, buyPrice: number, buyDate: string) => {
+    if (!selectedStock) return;
+    addStock({
+      symbol: selectedStock.symbol,
+      name: selectedStock.name,
+      shares,
+      buyPrice,
+      buyDate
+    });
   };
   
   const renderItem = ({ item }: { item: StockSearchResult }) => (
     <SearchResultItem
       result={item}
       onPress={() => handleStockPress(item)}
-      isInWatchlist={isInWatchlist(item.symbol)}
+      isInWatchlist={isInPortfolio(item.symbol)}
       onToggleWatchlist={() => handleToggleWatchlist(item)}
     />
   );
@@ -71,6 +82,19 @@ export default function SearchScreen() {
             Try searching for stocks like AAPL, GOOGL, MSFT, TSLA, or NVDA
           </Text>
         </View>
+      )}
+
+      {selectedStock && (
+        <AddPortfolioItemModal
+          visible={modalVisible}
+          symbol={selectedStock.symbol}
+          name={selectedStock.name}
+          onClose={() => {
+            setModalVisible(false);
+            setSelectedStock(null);
+          }}
+          onAdd={handleAddPosition}
+        />
       )}
     </View>
   );

@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueries } from '@tanstack/react-query';
 import { searchStocks, getQuote, getStockHistory, getChartData } from '../api/stocks';
 import { TimeRange } from '../types';
 
@@ -17,6 +17,17 @@ export function useStockQuote(symbol: string) {
     queryFn: () => getQuote(symbol),
     enabled: !!symbol,
     refetchInterval: 60000,
+  });
+}
+
+export function useMultipleStockQuotes(symbols: string[]) {
+  return useQueries({
+    queries: symbols.map((symbol) => ({
+      queryKey: ['quote', symbol],
+      queryFn: () => getQuote(symbol),
+      enabled: !!symbol,
+      refetchInterval: 60000,
+    })),
   });
 }
 

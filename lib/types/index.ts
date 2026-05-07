@@ -34,6 +34,15 @@ export interface WatchlistItem {
   addedAt: number;
 }
 
+export interface PortfolioItem {
+  id: string;
+  symbol: string;
+  name: string;
+  shares: number;
+  buyPrice: number;
+  buyDate: string;
+}
+
 export type TimeRange = '1D' | '1W' | '1M' | '1Y';
 
 export interface ChartDataPoint {

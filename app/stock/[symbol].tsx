@@ -3,7 +3,8 @@ import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { HeaderBackButton } from '@react-navigation/elements';
 import { useStockQuote, useChartData } from '../../lib/hooks/useStock';
-import { useWatchlistStore } from '../../lib/store/watchlist';
+import { usePortfolioStore } from '../../lib/store/portfolio';
+import { AddPortfolioItemModal } from '../../components/AddPortfolioItemModal';
 import { InteractiveChart } from '../../components/InteractiveChart';
 import { TimeRange } from '../../lib/types';
 
@@ -13,17 +14,18 @@ export default function StockDetailsScreen() {
   const [timeRange, setTimeRange] = useState<TimeRange>('1M');
   const { data: quote, isLoading: quoteLoading } = useStockQuote(symbol);
   const { data: chartData, isLoading: chartLoading } = useChartData(symbol, timeRange);
-  const { isInWatchlist, addStock, removeStock } = useWatchlistStore();
+  const { addStock } = usePortfolioStore();
+  const [modalVisible, setModalVisible] = useState(false);
   
-  const inWatchlist = symbol ? isInWatchlist(symbol) : false;
-  
-  const handleToggleWatchlist = () => {
+  const handleAddPosition = (shares: number, buyPrice: number, buyDate: string) => {
     if (!quote) return;
-    if (inWatchlist) {
-      removeStock(symbol);
-    } else {
-      addStock(symbol, quote.name);
-    }
+    addStock({
+      symbol,
+      name: quote.name,
+      shares,
+      buyPrice,
+      buyDate
+    });
   };
 
   const handleTimeRangeChange = (range: TimeRange) => {
@@ -45,9 +47,9 @@ export default function StockDetailsScreen() {
             />
           ),
           headerRight: () => quote ? (
-            <TouchableOpacity onPress={handleToggleWatchlist} style={styles.headerButton}>
-              <Text style={[styles.headerButtonText, inWatchlist && styles.addedText]}>
-                {inWatchlist ? '✓ Added' : '+ Add'}
+            <TouchableOpacity onPress={() => setModalVisible(true)} style={styles.headerButton}>
+              <Text style={styles.headerButtonText}>
+                + Add
               </Text>
             </TouchableOpacity>
           ) : null,
@@ -113,6 +115,15 @@ export default function StockDetailsScreen() {
             </View>
           </View>
         </ScrollView>
+      )}
+      {quote && (
+        <AddPortfolioItemModal
+          visible={modalVisible}
+          symbol={symbol}
+          name={quote.name}
+          onClose={() => setModalVisible(false)}
+          onAdd={handleAddPosition}
+        />
       )}
     </>
   );
