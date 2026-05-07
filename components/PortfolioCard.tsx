@@ -38,6 +38,11 @@ export function PortfolioCard({ item, quote, onPress, onEdit }: PortfolioCardPro
           <Text style={styles.label}>Avg Cost</Text>
           <Text style={styles.value}>${item.buyPrice.toFixed(2)}</Text>
         </View>
+
+        <View style={styles.investedSection}>
+          <Text style={styles.label}>Invested</Text>
+          <Text style={styles.value}>${totalCost.toFixed(2)}</Text>
+        </View>
         
         <View style={styles.returnSection}>
           <Text style={styles.label}>Total Return</Text>
@@ -119,8 +124,14 @@ const styles = StyleSheet.create({
   },
   costSection: {
     flex: 1,
+    alignItems: 'flex-start',
+  },
+  investedSection: {
+    flex: 1,
+    alignItems: 'center',
   },
   returnSection: {
+    flex: 1.2,
     alignItems: 'flex-end',
   },
   label: {

@@ -119,3 +119,59 @@ export function calculatePortfolioEquityCurve(portfolio: PortfolioItem[], histor
 
   return equityCurve;
 }
+
+export function calculatePortfolioPnLCurve(portfolio: PortfolioItem[], historyMap: Record<string, StockHistory[]>): ChartDataPoint[] {
+  const allDates = new Set<string>();
+  Object.values(historyMap).forEach(history => {
+    history.forEach(point => allDates.add(point.date.split('T')[0]));
+  });
+
+  portfolio.forEach(item => {
+    allDates.add(item.buyDate.split('T')[0]);
+  });
+
+  const sortedDates = Array.from(allDates).sort();
+  if (sortedDates.length === 0 || portfolio.length === 0) return [];
+  
+  const earliestBuyDate = portfolio.reduce((min, item) => item.buyDate.split('T')[0] < min ? item.buyDate.split('T')[0] : min, portfolio[0].buyDate.split('T')[0]);
+
+  const timelineDates = sortedDates.filter(d => d >= earliestBuyDate);
+  if (timelineDates.length === 0) return [];
+
+  const pnlCurve: ChartDataPoint[] = [];
+  let isFirstPoint = true;
+
+  timelineDates.forEach(date => {
+    let totalPnL = 0;
+    let hasOwnedStocks = false;
+    
+    portfolio.forEach(item => {
+      const buyDate = item.buyDate.split('T')[0];
+      if (date >= buyDate) {
+        hasOwnedStocks = true;
+        const history = historyMap[item.symbol];
+        if (history) {
+          const pastPrices = history.filter(h => h.date.split('T')[0] <= date);
+          if (pastPrices.length > 0) {
+            pastPrices.sort((a, b) => a.date.localeCompare(b.date));
+            const priceOnDate = pastPrices[pastPrices.length - 1].close;
+            const gain = (priceOnDate - item.buyPrice) * item.shares;
+            totalPnL += gain;
+          }
+        }
+      }
+    });
+
+    if (hasOwnedStocks) {
+      if (isFirstPoint && date === earliestBuyDate) {
+        pnlCurve.push({ date, price: 0 }); // strictly 0.00 on the first purchase date
+        isFirstPoint = false;
+      } else {
+        pnlCurve.push({ date, price: totalPnL });
+        isFirstPoint = false;
+      }
+    }
+  });
+
+  return pnlCurve;
+}

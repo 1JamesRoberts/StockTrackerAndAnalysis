@@ -6,7 +6,7 @@ import { useMultipleStockQuotes, useMultipleStockHistory } from '../../lib/hooks
 import { PortfolioCard } from '../../components/PortfolioCard';
 import { ManagePositionModal } from '../../components/ManagePositionModal';
 import { InteractiveChart } from '../../components/InteractiveChart';
-import { calculatePortfolioEquityCurve } from '../../lib/utils/math';
+import { calculatePortfolioEquityCurve, calculatePortfolioPnLCurve } from '../../lib/utils/math';
 import { PortfolioItem } from '../../lib/types';
 
 export default function PortfolioScreen() {
@@ -89,27 +89,27 @@ export default function PortfolioScreen() {
     };
   }, [items, quotesMap]);
 
-  const equityCurve = useMemo(() => {
-    const curve = calculatePortfolioEquityCurve(items, historyMap);
+  const pnlCurve = useMemo(() => {
+    const curve = calculatePortfolioPnLCurve(items, historyMap);
     
     // Append the current live portfolio value
-    if (metrics.totalValue > 0) {
+    if (metrics.totalReturn !== undefined) {
       const todayStr = new Date().toISOString().split('T')[0];
       if (curve.length > 0 && curve[curve.length - 1].date === todayStr) {
-        curve[curve.length - 1].price = metrics.totalValue;
-      } else {
+        curve[curve.length - 1].price = metrics.totalReturn;
+      } else if (curve.length > 0) {
         curve.push({
           date: todayStr,
-          price: metrics.totalValue,
+          price: metrics.totalReturn,
         });
       }
     }
     
     return curve;
-  }, [items, historyMap, metrics.totalValue]);
+  }, [items, historyMap, metrics.totalReturn]);
 
-  const isCurvePositive = equityCurve.length >= 2
-    ? equityCurve[equityCurve.length - 1].price >= equityCurve[0].price
+  const isCurvePositive = pnlCurve.length >= 2
+    ? pnlCurve[pnlCurve.length - 1].price >= 0
     : true;
 
   if (items.length === 0) {
@@ -134,6 +134,7 @@ export default function PortfolioScreen() {
           <View style={styles.headerMetricsArea}>
             <Text style={styles.headerTitle}>Portfolio Value</Text>
             <Text style={styles.totalValue}>${metrics.totalValue.toFixed(2)}</Text>
+            <Text style={styles.totalCost}>Total Invested: ${metrics.totalCost.toFixed(2)}</Text>
 
             <View style={styles.metricsRow}>
               <View style={styles.metricBox}>
@@ -159,13 +160,14 @@ export default function PortfolioScreen() {
           </View>
 
           <View style={styles.headerChartArea}>
-            {equityCurve.length > 0 ? (
+            {pnlCurve.length > 0 ? (
               <InteractiveChart
-                data={equityCurve}
+                data={pnlCurve}
                 isPositive={isCurvePositive}
                 timeRange="ALL"
                 onTimeRangeChange={() => { }}
                 transparentBackground={true}
+                isPnL={true}
               />
             ) : (
               <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 150 }}>
@@ -253,6 +255,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#FFFFFF',
     marginTop: 4,
+    marginBottom: 4,
+  },
+  totalCost: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#EBEBF5',
+    opacity: 0.7,
     marginBottom: 20,
   },
   metricsRow: {
