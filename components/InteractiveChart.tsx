@@ -5,6 +5,7 @@ import { ChartDataPoint, TimeRange } from '../lib/types';
 
 interface InteractiveChartProps {
   data: ChartDataPoint[];
+  baselineData?: ChartDataPoint[];
   isPositive?: boolean;
   timeRange: TimeRange;
   onTimeRangeChange: (range: TimeRange) => void;
@@ -20,6 +21,7 @@ const CHART_HEIGHT = 170;
 
 export function InteractiveChart({
   data,
+  baselineData,
   isPositive = true,
   timeRange,
   onTimeRangeChange,
@@ -53,9 +55,12 @@ export function InteractiveChart({
 
   if (data && data.length > 0) {
     const prices = data.map(d => d.price);
+    const baselinePrices = baselineData ? baselineData.map(d => d.price) : [];
+    const allPrices = [...prices, ...baselinePrices];
+    
     if (isPnL) {
-      minPrice = Math.min(0, ...prices);
-      maxPrice = Math.max(0, ...prices);
+      minPrice = Math.min(0, ...allPrices);
+      maxPrice = Math.max(0, ...allPrices);
       // Give some padding
       const rng = maxPrice - minPrice;
       if (rng === 0) {
@@ -66,8 +71,8 @@ export function InteractiveChart({
         minPrice -= rng * 0.1;
       }
     } else {
-      minPrice = Math.floor(Math.min(...prices) * 0.98);
-      maxPrice = Math.ceil(Math.max(...prices) * 1.02);
+      minPrice = Math.floor(Math.min(...allPrices) * 0.98);
+      maxPrice = Math.ceil(Math.max(...allPrices) * 1.02);
     }
 
     const priceRange = maxPrice - minPrice || 1;
@@ -123,6 +128,20 @@ export function InteractiveChart({
       pathD += ` L ${x} ${y}`;
     }
   });
+
+  let baselinePathD = '';
+  if (baselineData && baselineData.length > 0 && maxPrice - minPrice !== 0) {
+    baselineData.forEach((item, index) => {
+      const xPercent = baselineData.length > 1 ? index / (baselineData.length - 1) : 0.5;
+      const x = (xPercent * chartWidth);
+      const y = (((maxPrice - item.price) / (maxPrice - minPrice || 1)) * CHART_HEIGHT);
+      if (index === 0) {
+        baselinePathD += `M ${x} ${y}`;
+      } else {
+        baselinePathD += ` L ${x} ${y}`;
+      }
+    });
+  }
   const zeroYPercent = ((maxPrice - 0) / (maxPrice - minPrice || 1)) * 100;
   const clampedZeroPercent = Math.max(0, Math.min(100, zeroYPercent));
   const zeroSvgY = (clampedZeroPercent / 100) * svgHeight;
@@ -221,6 +240,9 @@ export function InteractiveChart({
                       )}
                     </Defs>
                     <Path d={areaPathD} fill={`url(#${gradientId})`} />
+                    {baselinePathD ? (
+                      <Path d={baselinePathD} stroke="#AEAEB2" strokeWidth="1.5" strokeDasharray="4 4" fill="none" />
+                    ) : null}
                     <Path d={pathD} stroke={isPnL ? `url(#${lineGradientId})` : color} strokeWidth="2" fill="none" />
                   </Svg>
                 </View>

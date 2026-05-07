@@ -43,6 +43,14 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="optimizer"
+        options={{
+          title: 'Optimizer',
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20 }}>🧮</Text>,
+          headerTitle: 'Portfolio Optimizer',
+        }}
+      />
+      <Tabs.Screen
         name="search"
         options={{
           title: 'Search',

@@ -4,6 +4,11 @@ import { usePortfolioStore } from '../../lib/store/portfolio';
 import { useMultipleStockHistory, useNews } from '../../lib/hooks/useStock';
 import { buildCorrelationMatrix } from '../../lib/utils/math';
 import { NewsArticle } from '../../lib/types';
+import { useAllocationBacktester } from '../../lib/hooks/useAllocationBacktester';
+import { AllocationConfig } from '../../components/AllocationConfig';
+import { QuantitativeMetricsGrid } from '../../components/QuantitativeMetricsGrid';
+import { InteractiveChart } from '../../components/InteractiveChart';
+import { RebalanceFrequency } from '../../lib/utils/backtest';
 
 export default function AnalysisScreen() {
   const { items } = usePortfolioStore();
@@ -11,6 +16,21 @@ export default function AnalysisScreen() {
   
   const uniqueSymbols = useMemo(() => Array.from(new Set(items.map(item => item.symbol))), [items]);
   
+  const [targetWeights, setTargetWeights] = useState<number[]>([]);
+  const [rebalanceFreq, setRebalanceFreq] = useState<RebalanceFrequency>('none');
+
+  useMemo(() => {
+    if (uniqueSymbols.length > 0 && targetWeights.length !== uniqueSymbols.length) {
+      setTargetWeights(new Array(uniqueSymbols.length).fill(1 / uniqueSymbols.length));
+    }
+  }, [uniqueSymbols]);
+
+  const handleWeightChange = (index: number, newWeight: number) => {
+    const updated = [...targetWeights];
+    updated[index] = newWeight;
+    setTargetWeights(updated);
+  };
+
   const historyQueries = useMultipleStockHistory(uniqueSymbols, '1Y');
   const { data: newsData, isLoading: newsLoading, refetch: refetchNews } = useNews();
 
@@ -45,6 +65,13 @@ export default function AnalysisScreen() {
     return buildCorrelationMatrix(uniqueSymbols, pricesMap);
   }, [uniqueSymbols, pricesMap]);
 
+  const backtest = useAllocationBacktester({
+    symbols: uniqueSymbols,
+    weights: targetWeights,
+    historyMap,
+    rebalanceFreq,
+  });
+
   if (items.length === 0) {
     return (
       <View style={styles.emptyContainer}>
@@ -60,6 +87,37 @@ export default function AnalysisScreen() {
       style={styles.container}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
     >
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Portfolio Backtesting</Text>
+        <AllocationConfig 
+          symbols={uniqueSymbols}
+          weights={targetWeights}
+          onChangeWeight={handleWeightChange}
+          rebalanceFreq={rebalanceFreq}
+          onChangeRebalanceFreq={setRebalanceFreq}
+        />
+
+        {backtest.isReady && Math.abs(targetWeights.reduce((a, b) => a + b, 0) - 1) <= 0.01 ? (
+          <>
+            <QuantitativeMetricsGrid 
+              result={backtest.portfolio} 
+              baseline={backtest.baseline} 
+            />
+            <View style={styles.chartContainer}>
+              <InteractiveChart
+                data={backtest.portfolio.equityCurve}
+                baselineData={backtest.baseline.equityCurve}
+                timeRange="ALL"
+                onTimeRangeChange={() => {}}
+                isPositive={backtest.portfolio.totalReturn >= 0}
+              />
+            </View>
+          </>
+        ) : (
+          <Text style={styles.placeholderText}>Adjust allocations to 100% to view backtest results.</Text>
+        )}
+      </View>
+
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Correlation Matrix</Text>
         {correlationMatrix.length > 0 ? (
@@ -129,4 +187,5 @@ const styles = StyleSheet.create({
   newsSource: { fontSize: 12, fontWeight: '600', color: '#007AFF', marginBottom: 4 },
   newsHeadline: { fontSize: 16, fontWeight: '700', color: '#1C1C1E', marginBottom: 6 },
   newsSummary: { fontSize: 14, color: '#666', lineHeight: 20 },
+  chartContainer: { height: 260, marginTop: 16, marginHorizontal: -16 },
 });
