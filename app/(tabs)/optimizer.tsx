@@ -4,10 +4,11 @@ import { usePortfolioStore } from '../../lib/store/portfolio';
 import { useMultipleStockHistory } from '../../lib/hooks/useStock';
 import { calculateReturns, calculateMean, calculateCovariance } from '../../lib/utils/math';
 import { runMonteCarloAsync, MonteCarloResult } from '../../lib/utils/monteCarlo';
-import { runEfficientFrontierAsync, EfficientFrontierResult } from '../../lib/utils/efficientFrontier';
+import { runEfficientFrontierAsync, EfficientFrontierResult, PortfolioPoint } from '../../lib/utils/efficientFrontier';
 import { OptimizerControls } from '../../components/OptimizerControls';
 import { MonteCarloFanChart } from '../../components/MonteCarloFanChart';
 import { EfficientFrontierChart } from '../../components/EfficientFrontierChart';
+import { AllocationBreakdown } from '../../components/AllocationBreakdown';
 
 export default function OptimizerScreen() {
   const { items } = usePortfolioStore();
@@ -21,6 +22,7 @@ export default function OptimizerScreen() {
   
   const [mcResult, setMcResult] = useState<MonteCarloResult | null>(null);
   const [efResult, setEfResult] = useState<EfficientFrontierResult | null>(null);
+  const [hoveredPortfolio, setHoveredPortfolio] = useState<PortfolioPoint | null>(null);
 
   const uniqueSymbols = useMemo(() => Array.from(new Set(items.map(item => item.symbol))), [items]);
   const historyQueries = useMultipleStockHistory(uniqueSymbols, '1Y');
@@ -149,9 +151,10 @@ export default function OptimizerScreen() {
         uniqueSymbols,
         covarianceMatrix,
         expectedReturns,
-        mcSims
+        50 // Resolution
       );
       setEfResult(res);
+      setHoveredPortfolio(res.maxSharpe); // Default to Max Sharpe
     } catch (e) {
       console.error(e);
     } finally {
@@ -196,7 +199,23 @@ export default function OptimizerScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Efficient Frontier</Text>
         <Text style={styles.sectionDesc}>Optimizes target weightings using Modern Portfolio Theory.</Text>
-        <EfficientFrontierChart data={efResult} symbols={uniqueSymbols} isLoading={isEFRunning} />
+        <EfficientFrontierChart 
+          data={efResult} 
+          symbols={uniqueSymbols} 
+          isLoading={isEFRunning} 
+          onHover={(p) => {
+            if (p) setHoveredPortfolio(p);
+            else if (efResult) setHoveredPortfolio(efResult.maxSharpe);
+          }}
+        />
+        {efResult && hoveredPortfolio && (
+          <AllocationBreakdown 
+            symbols={uniqueSymbols} 
+            weights={hoveredPortfolio.weights} 
+            title="Portfolio Weights"
+            subtitle={`Ret: ${(hoveredPortfolio.return * 100).toFixed(1)}% • Vol: ${(hoveredPortfolio.volatility * 100).toFixed(1)}% • Sharpe: ${hoveredPortfolio.sharpe.toFixed(2)}`}
+          />
+        )}
       </View>
     </ScrollView>
   );

@@ -2,7 +2,12 @@ import { StockQuote, StockSearchResult, StockHistory, TimeRange, ChartDataPoint 
 
 const TWELVEDATA_API_KEYS = [
   'd9689515957d4d55bd1fa2a8cf110dbc',
-  '9ec5eba69f55455990d611d57a5adad4'
+  '9ec5eba69f55455990d611d57a5adad4',
+  'e91b963bb3d54ca9aa260c575b2a834d',
+  'fa6f354384cd4a2fb05e63ece7fd1c42',
+  '011459dbadd844409d3743681e958244',
+  'd9ffc01d9f3e40cea382eaf0f371d41e',
+  '9d4c79b10ff94ee9b69c243fb66c2c94'
 ];
 let currentKeyIndex = 0;
 const TWELVEDATA_BASE_URL = 'https://api.twelvedata.com';

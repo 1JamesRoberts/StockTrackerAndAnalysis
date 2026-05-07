@@ -7,6 +7,7 @@ interface EfficientFrontierChartProps {
   data: EfficientFrontierResult | null;
   symbols: string[];
   isLoading: boolean;
+  onHover?: (point: PortfolioPoint | null) => void;
 }
 
 const PADDING_TOP = 20;
@@ -15,10 +16,10 @@ const PADDING_LEFT = 50;
 const PADDING_RIGHT = 30;
 const CHART_HEIGHT = 220;
 
-export function EfficientFrontierChart({ data, symbols, isLoading }: EfficientFrontierChartProps) {
+export function EfficientFrontierChart({ data, symbols, isLoading, onHover }: EfficientFrontierChartProps) {
   const [chartWidth, setChartWidth] = React.useState(280);
   const chartRef = useRef<View>(null);
-  const [tooltip, setTooltip] = useState<{ point: PortfolioPoint; title: string; x: number; y: number } | null>(null);
+  const [activePoint, setActivePoint] = useState<PortfolioPoint | null>(null);
 
   useEffect(() => {
     setTimeout(() => {
@@ -61,6 +62,28 @@ export function EfficientFrontierChart({ data, symbols, isLoading }: EfficientFr
   const getX = (vol: number) => PADDING_LEFT + ((vol - minVol) / volRange) * chartWidth;
   const getY = (ret: number) => PADDING_TOP + ((maxRet - ret) / retRange) * CHART_HEIGHT;
 
+  // Interaction handlers
+  const handleMove = (xPos: number) => {
+    if (xPos < PADDING_LEFT || xPos > PADDING_LEFT + chartWidth) {
+      setActivePoint(null);
+      if (onHover) onHover(null);
+      return;
+    }
+    const targetVol = minVol + ((xPos - PADDING_LEFT) / chartWidth) * volRange;
+    // Find closest point by volatility
+    let closest = boundaryPoints[0];
+    let minDist = Math.abs(closest.volatility - targetVol);
+    for (const p of boundaryPoints) {
+      const dist = Math.abs(p.volatility - targetVol);
+      if (dist < minDist) {
+        minDist = dist;
+        closest = p;
+      }
+    }
+    setActivePoint(closest);
+    if (onHover) onHover(closest);
+  };
+
   // Build the curve path
   let pathD = '';
   boundaryPoints.forEach((p, i) => {
@@ -100,7 +123,20 @@ export function EfficientFrontierChart({ data, symbols, isLoading }: EfficientFr
 
   return (
     <View style={styles.container}>
-      <View ref={chartRef} style={styles.chartBox}>
+      <View 
+        ref={chartRef} 
+        style={styles.chartBox}
+        onTouchMove={e => handleMove(e.nativeEvent.locationX)}
+        onTouchEnd={() => { setActivePoint(null); if (onHover) onHover(null); }}
+        onMouseMove={(e: any) => {
+          if (chartRef.current) {
+            chartRef.current.measure((fx, fy, w, h, px, py) => {
+              handleMove(e.clientX - px);
+            });
+          }
+        }}
+        onMouseLeave={() => { setActivePoint(null); if (onHover) onHover(null); }}
+      >
         {/* Y-Axis */}
         <View style={styles.yAxisLabels}>
           <Text style={styles.axisLabel}>{(maxRet * 100).toFixed(1)}%</Text>
@@ -117,7 +153,7 @@ export function EfficientFrontierChart({ data, symbols, isLoading }: EfficientFr
         <Text style={styles.xAxisTitle}>Volatility (Risk)</Text>
         <Text style={styles.yAxisTitle}>Expected Return</Text>
 
-        <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+        <Svg width={chartWidth + PADDING_LEFT + PADDING_RIGHT} height={CHART_HEIGHT + PADDING_TOP + PADDING_BOTTOM} style={StyleSheet.absoluteFill}>
           <Defs>
             <LinearGradient id="efGradient" x1="0" y1="0" x2="1" y2="0">
               <Stop offset="0" stopColor="#007AFF" />
@@ -128,38 +164,36 @@ export function EfficientFrontierChart({ data, symbols, isLoading }: EfficientFr
           {/* Efficient Frontier Curve */}
           <Path d={pathD} stroke="url(#efGradient)" strokeWidth="3" fill="none" strokeLinejoin="round" />
 
+          {/* Active Hover Line and Point */}
+          {activePoint && (
+            <>
+              <Path 
+                d={`M ${getX(activePoint.volatility)} ${PADDING_TOP} L ${getX(activePoint.volatility)} ${PADDING_TOP + CHART_HEIGHT}`} 
+                stroke="#E5E5EA" 
+                strokeWidth="1" 
+                strokeDasharray="4 4" 
+              />
+              <Circle 
+                cx={getX(activePoint.volatility)} 
+                cy={getY(activePoint.return)} 
+                r="5" 
+                fill="#1C1C1E" 
+                stroke="#FFF" 
+                strokeWidth="2" 
+              />
+            </>
+          )}
+
           {/* Minimum Variance Point (Circle) */}
           <Circle 
             cx={mvX} cy={mvY} r="6" fill="#007AFF" stroke="#FFF" strokeWidth="2" 
-            onPress={() => setTooltip({ point: minVariance, title: 'Min Variance', x: mvX, y: mvY })}
           />
 
           {/* Max Sharpe Point (Star) */}
           <Path 
             d={drawStar(msX, msY, 5, 8, 4)} fill="#FF9500" stroke="#FFF" strokeWidth="1"
-            onPress={() => setTooltip({ point: maxSharpe, title: 'Max Sharpe', x: msX, y: msY })}
           />
         </Svg>
-
-        {tooltip && (
-          <View style={[styles.tooltip, { left: Math.min(tooltip.x - 60, chartWidth - 80), top: Math.max(10, tooltip.y - 120) }]}>
-            <View style={styles.tooltipHeader}>
-              <Text style={styles.tooltipTitle}>{tooltip.title}</Text>
-              <Text style={styles.closeTooltip} onPress={() => setTooltip(null)}>✕</Text>
-            </View>
-            <View style={styles.tooltipStats}>
-              <Text style={styles.tooltipStatText}>Ret: {(tooltip.point.return * 100).toFixed(2)}%</Text>
-              <Text style={styles.tooltipStatText}>Vol: {(tooltip.point.volatility * 100).toFixed(2)}%</Text>
-            </View>
-            <View style={styles.tooltipDivider} />
-            {symbols.map((sym, idx) => (
-              <View key={sym} style={styles.tooltipRow}>
-                <Text style={styles.tooltipSymbol}>{sym}</Text>
-                <Text style={styles.tooltipWeight}>{(tooltip.point.weights[idx] * 100).toFixed(1)}%</Text>
-              </View>
-            ))}
-          </View>
-        )}
       </View>
 
       <View style={styles.legend}>
@@ -258,64 +292,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#8E8E93',
     fontWeight: '500',
-  },
-  tooltip: {
-    position: 'absolute',
-    backgroundColor: 'rgba(28, 28, 30, 0.95)',
-    padding: 12,
-    borderRadius: 12,
-    minWidth: 120,
-    zIndex: 100,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  tooltipHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  tooltipTitle: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  closeTooltip: {
-    color: '#AEAEB2',
-    fontSize: 14,
-    fontWeight: '700',
-    paddingLeft: 12,
-  },
-  tooltipStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  tooltipStatText: {
-    color: '#AEAEB2',
-    fontSize: 10,
-  },
-  tooltipDivider: {
-    height: 1,
-    backgroundColor: '#3A3A3C',
-    marginBottom: 8,
-  },
-  tooltipRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  tooltipSymbol: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  tooltipWeight: {
-    color: '#34C759',
-    fontSize: 12,
-    fontWeight: '700',
   },
 });

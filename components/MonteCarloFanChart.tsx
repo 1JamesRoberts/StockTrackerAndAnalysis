@@ -91,7 +91,7 @@ export function MonteCarloFanChart({ data, isLoading }: MonteCarloFanChartProps)
           <Text style={styles.axisLabel}>${minPrice.toFixed(2)}</Text>
         </View>
 
-        <Svg width="100%" height="100%" style={StyleSheet.absoluteFill}>
+        <Svg width={chartWidth + PADDING_LEFT + PADDING_RIGHT} height={CHART_HEIGHT + PADDING_TOP + PADDING_BOTTOM} style={StyleSheet.absoluteFill}>
           <Defs>
             <LinearGradient id={`fanGradient-${chartId}`} x1="0" y1="0" x2="0" y2="1">
               <Stop offset="0" stopColor="#007AFF" stopOpacity="0.2" />
