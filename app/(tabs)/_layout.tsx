@@ -1,5 +1,5 @@
-import { Tabs } from 'expo-router';
-import { Text } from 'react-native';
+import { Tabs, Link } from 'expo-router';
+import { Text, Pressable } from 'react-native';
 
 export default function TabLayout() {
   return (
@@ -25,6 +25,21 @@ export default function TabLayout() {
           title: 'Portfolio',
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 20 }}>💼</Text>,
           headerTitle: 'My Portfolio',
+          headerRight: () => (
+            <Link href="/transactions" asChild>
+              <Pressable style={{ marginRight: 16 }}>
+                <Text style={{ fontSize: 18 }}>🧾</Text>
+              </Pressable>
+            </Link>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="analysis"
+        options={{
+          title: 'Analysis',
+          tabBarIcon: ({ color }) => <Text style={{ fontSize: 20 }}>📊</Text>,
+          headerTitle: 'Portfolio Analysis',
         }}
       />
       <Tabs.Screen

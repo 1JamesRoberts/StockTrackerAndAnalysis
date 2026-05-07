@@ -88,6 +88,7 @@ function getTwelveDataParams(range: TimeRange): { interval: string, outputsize: 
     case '1W': return { interval: '1h', outputsize: 35 };
     case '1M': return { interval: '1day', outputsize: 30 };
     case '1Y': return { interval: '1week', outputsize: 52 };
+    case 'ALL': return { interval: '1day', outputsize: 5000 }; // ~20 years of daily data
     default: return { interval: '1day', outputsize: 30 };
   }
 }
@@ -149,6 +150,41 @@ export async function getIntradayData(symbol: string): Promise<ChartDataPoint[]>
     }));
   } catch (error) {
     console.error('Intraday error:', error);
+    return [];
+  }
+}
+
+// Finnhub API Integration for News
+const FINNHUB_API_KEY = 'd7tm9kpr01qlbd3kmpcgd7tm9kpr01qlbd3kmpd0';
+const FINNHUB_BASE_URL = 'https://finnhub.io/api/v1';
+
+export async function getNews(symbol?: string): Promise<any[]> {
+  try {
+    let url = '';
+    if (symbol) {
+      // Company news: Past 7 days
+      const to = new Date().toISOString().split('T')[0];
+      const fromDate = new Date();
+      fromDate.setDate(fromDate.getDate() - 7);
+      const from = fromDate.toISOString().split('T')[0];
+      url = `${FINNHUB_BASE_URL}/company-news?symbol=${symbol}&from=${from}&to=${to}&token=${FINNHUB_API_KEY}`;
+    } else {
+      // General market news
+      url = `${FINNHUB_BASE_URL}/news?category=general&token=${FINNHUB_API_KEY}`;
+    }
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    // Sometimes Finnhub returns { error: "..." } if limit reached
+    if (data.error) {
+      console.error('Finnhub API Error:', data.error);
+      return [];
+    }
+
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error('News error:', error);
     return [];
   }
 }

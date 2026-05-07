@@ -2,15 +2,19 @@ import { View, Text, FlatList, StyleSheet, RefreshControl, ScrollView } from 're
 import { useRouter } from 'expo-router';
 import { useState, useMemo } from 'react';
 import { usePortfolioStore } from '../../lib/store/portfolio';
-import { useMultipleStockQuotes } from '../../lib/hooks/useStock';
+import { useMultipleStockQuotes, useMultipleStockHistory } from '../../lib/hooks/useStock';
 import { PortfolioCard } from '../../components/PortfolioCard';
+import { ManagePositionModal } from '../../components/ManagePositionModal';
+import { InteractiveChart } from '../../components/InteractiveChart';
+import { calculatePortfolioEquityCurve } from '../../lib/utils/math';
 import { PortfolioItem } from '../../lib/types';
 
 export default function PortfolioScreen() {
   const router = useRouter();
   const { items } = usePortfolioStore();
   const [refreshing, setRefreshing] = useState(false);
-  
+  const [selectedItem, setSelectedItem] = useState<PortfolioItem | null>(null);
+
   // Extract unique symbols to fetch quotes
   const uniqueSymbols = useMemo(() => {
     const symbols = new Set(items.map(item => item.symbol));
@@ -18,15 +22,21 @@ export default function PortfolioScreen() {
   }, [items]);
 
   const quoteQueries = useMultipleStockQuotes(uniqueSymbols);
-  
+  const historyQueries = useMultipleStockHistory(uniqueSymbols, '1Y');
+
   const onRefresh = () => {
     setRefreshing(true);
     quoteQueries.forEach(query => query.refetch());
+    historyQueries.forEach(query => query.refetch());
     setTimeout(() => setRefreshing(false), 1000);
   };
-  
+
   const handleStockPress = (symbol: string) => {
     router.push(`/stock/${symbol}`);
+  };
+
+  const handleEditPress = (item: PortfolioItem) => {
+    setSelectedItem(item);
   };
 
   // Create a map of symbol -> quote for easy lookup
@@ -39,6 +49,16 @@ export default function PortfolioScreen() {
     });
     return map;
   }, [uniqueSymbols, quoteQueries]);
+
+  const historyMap = useMemo(() => {
+    const map: Record<string, any> = {};
+    uniqueSymbols.forEach((symbol, index) => {
+      if (historyQueries[index].data) {
+        map[symbol] = historyQueries[index].data;
+      }
+    });
+    return map;
+  }, [uniqueSymbols, historyQueries]);
 
   // Calculate Portfolio Metrics
   const metrics = useMemo(() => {
@@ -68,7 +88,30 @@ export default function PortfolioScreen() {
       dailyReturnPercent
     };
   }, [items, quotesMap]);
-  
+
+  const equityCurve = useMemo(() => {
+    const curve = calculatePortfolioEquityCurve(items, historyMap);
+    
+    // Append the current live portfolio value
+    if (metrics.totalValue > 0) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      if (curve.length > 0 && curve[curve.length - 1].date === todayStr) {
+        curve[curve.length - 1].price = metrics.totalValue;
+      } else {
+        curve.push({
+          date: todayStr,
+          price: metrics.totalValue,
+        });
+      }
+    }
+    
+    return curve;
+  }, [items, historyMap, metrics.totalValue]);
+
+  const isCurvePositive = equityCurve.length >= 2
+    ? equityCurve[equityCurve.length - 1].price >= equityCurve[0].price
+    : true;
+
   if (items.length === 0) {
     return (
       <View style={styles.emptyContainer}>
@@ -87,34 +130,56 @@ export default function PortfolioScreen() {
 
     return (
       <View style={styles.headerContainer}>
-        <Text style={styles.headerTitle}>Portfolio Value</Text>
-        <Text style={styles.totalValue}>${metrics.totalValue.toFixed(2)}</Text>
-        
-        <View style={styles.metricsRow}>
-          <View style={styles.metricBox}>
-            <Text style={styles.metricLabel}>Total Return</Text>
-            <Text style={[styles.metricValue, isTotalPositive ? styles.positiveText : styles.negativeText]}>
-              {isTotalPositive ? '+' : ''}${metrics.totalReturn.toFixed(2)}
-            </Text>
-            <Text style={[styles.metricPercent, isTotalPositive ? styles.positiveText : styles.negativeText]}>
-              {isTotalPositive ? '▲' : '▼'} {Math.abs(metrics.totalReturnPercent).toFixed(2)}%
-            </Text>
+        <View style={styles.headerTopRow}>
+          <View style={styles.headerMetricsArea}>
+            <Text style={styles.headerTitle}>Portfolio Value</Text>
+            <Text style={styles.totalValue}>${metrics.totalValue.toFixed(2)}</Text>
+
+            <View style={styles.metricsRow}>
+              <View style={styles.metricBox}>
+                <Text style={styles.metricLabel}>Total Return</Text>
+                <Text style={[styles.metricValue, isTotalPositive ? styles.positiveText : styles.negativeText]}>
+                  {isTotalPositive ? '+' : ''}${metrics.totalReturn.toFixed(2)}
+                </Text>
+                <Text style={[styles.metricPercent, isTotalPositive ? styles.positiveText : styles.negativeText]}>
+                  {isTotalPositive ? '▲' : '▼'} {Math.abs(metrics.totalReturnPercent).toFixed(2)}%
+                </Text>
+              </View>
+
+              <View style={styles.metricBox}>
+                <Text style={styles.metricLabel}>Today's Return</Text>
+                <Text style={[styles.metricValue, isDailyPositive ? styles.positiveText : styles.negativeText]}>
+                  {isDailyPositive ? '+' : ''}${metrics.dailyChangeValue.toFixed(2)}
+                </Text>
+                <Text style={[styles.metricPercent, isDailyPositive ? styles.positiveText : styles.negativeText]}>
+                  {isDailyPositive ? '▲' : '▼'} {Math.abs(metrics.dailyReturnPercent).toFixed(2)}%
+                </Text>
+              </View>
+            </View>
           </View>
-          
-          <View style={styles.metricBox}>
-            <Text style={styles.metricLabel}>Today's Return</Text>
-            <Text style={[styles.metricValue, isDailyPositive ? styles.positiveText : styles.negativeText]}>
-              {isDailyPositive ? '+' : ''}${metrics.dailyChangeValue.toFixed(2)}
-            </Text>
-            <Text style={[styles.metricPercent, isDailyPositive ? styles.positiveText : styles.negativeText]}>
-              {isDailyPositive ? '▲' : '▼'} {Math.abs(metrics.dailyReturnPercent).toFixed(2)}%
-            </Text>
+
+          <View style={styles.headerChartArea}>
+            {equityCurve.length > 0 ? (
+              <InteractiveChart
+                data={equityCurve}
+                isPositive={isCurvePositive}
+                timeRange="ALL"
+                onTimeRangeChange={() => { }}
+                transparentBackground={true}
+              />
+            ) : (
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 150 }}>
+                <Text style={{ color: '#8E8E93', fontSize: 12, fontStyle: 'italic', textAlign: 'center' }}>
+                  Not enough data for backtesting.
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       </View>
     );
   };
-  
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -122,10 +187,11 @@ export default function PortfolioScreen() {
         keyExtractor={(item) => item.id}
         ListHeaderComponent={renderHeader}
         renderItem={({ item }) => (
-          <PortfolioCard 
-            item={item} 
+          <PortfolioCard
+            item={item}
             quote={quotesMap[item.symbol]}
             onPress={() => handleStockPress(item.symbol)}
+            onEdit={() => handleEditPress(item)}
           />
         )}
         contentContainerStyle={styles.list}
@@ -133,6 +199,11 @@ export default function PortfolioScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         showsVerticalScrollIndicator={false}
+      />
+      <ManagePositionModal
+        visible={!!selectedItem}
+        item={selectedItem}
+        onClose={() => setSelectedItem(null)}
       />
     </View>
   );
@@ -148,7 +219,7 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     backgroundColor: '#1C1C1E',
-    padding: 24,
+    padding: 16,
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 20,
@@ -157,6 +228,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 5,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  headerMetricsArea: {
+    flex: 1,
+    paddingHorizontal: 8,
+  },
+  headerChartArea: {
+    flex: 1.5,
+    minHeight: 220,
+    justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 16,

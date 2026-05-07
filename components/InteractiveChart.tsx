@@ -8,6 +8,7 @@ interface InteractiveChartProps {
   isPositive: boolean;
   timeRange: TimeRange;
   onTimeRangeChange: (range: TimeRange) => void;
+  transparentBackground?: boolean;
 }
 
 const PADDING_TOP = 25;
@@ -20,7 +21,8 @@ export function InteractiveChart({
   data, 
   isPositive, 
   timeRange,
-  onTimeRangeChange
+  onTimeRangeChange,
+  transparentBackground = false
 }: InteractiveChartProps) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const [chartWidth, setChartWidth] = React.useState(280);
@@ -105,9 +107,10 @@ export function InteractiveChart({
   const areaPathD = pathD ? `${pathD} L ${chartWidth} ${svgHeight} L 0 ${svgHeight} Z` : '';
 
   return (
-    <View style={styles.container}>
-      <View style={styles.card}>
-        <View style={styles.tabs}>
+    <View style={[styles.container, transparentBackground && styles.transparentContainer]}>
+      <View style={[styles.card, transparentBackground && styles.transparentCard]}>
+        {!transparentBackground && (
+          <View style={styles.tabs}>
           {timeRanges.map(range => (
             <Pressable
               key={range}
@@ -120,6 +123,7 @@ export function InteractiveChart({
             </Pressable>
           ))}
         </View>
+        )}
 
         <View ref={chartRef} style={styles.chartBox}>
           {selectedPoint && (
@@ -151,7 +155,7 @@ export function InteractiveChart({
 
             <View style={styles.grid}>
               {[0, 25, 50, 75, 100].map((pos, i) => (
-                <View key={i} style={[styles.gridLine, { top: `${pos}%` }]} />
+                <View key={i} style={[styles.gridLine, transparentBackground && styles.gridLineTransparent, { top: `${pos}%` }]} />
               ))}
             </View>
 
@@ -223,7 +227,10 @@ function formatDate(d: string, r: TimeRange): string {
 
 const styles = StyleSheet.create({
   container: { padding: 16 },
+  transparentContainer: { padding: 0 },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 8, elevation: 3 },
+  transparentCard: { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0, padding: 0 },
+  transparentCard: { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0, padding: 0 },
   tabs: { flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 16 },
   tab: { paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20, backgroundColor: '#f5f5f5' },
   tabActive: { backgroundColor: '#1a1a1a' },
@@ -235,6 +242,7 @@ const styles = StyleSheet.create({
   axisLabel: { fontSize: 10, color: '#999' },
   grid: { position: 'absolute', left: PADDING_LEFT, right: PADDING_RIGHT, top: PADDING_TOP, bottom: PADDING_BOTTOM, zIndex: 0 },
   gridLine: { position: 'absolute', left: 0, right: 0, height: 1, backgroundColor: '#eee' },
+  gridLineTransparent: { backgroundColor: 'rgba(255,255,255,0.1)' },
   chartContent: { position: 'absolute', top: 0, bottom: 0, overflow: 'visible' },
   areaFill: { position: 'absolute', opacity: 0.15, zIndex: 5 },
   lineSegment: { position: 'absolute', height: 2, transformOrigin: 'left center', zIndex: 10 },

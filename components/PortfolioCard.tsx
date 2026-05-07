@@ -5,9 +5,10 @@ interface PortfolioCardProps {
   item: PortfolioItem;
   quote?: StockQuote;
   onPress: () => void;
+  onEdit: () => void;
 }
 
-export function PortfolioCard({ item, quote, onPress }: PortfolioCardProps) {
+export function PortfolioCard({ item, quote, onPress, onEdit }: PortfolioCardProps) {
   const currentPrice = quote?.price || 0;
   const currentValue = currentPrice * item.shares;
   const totalCost = item.buyPrice * item.shares;
@@ -23,6 +24,9 @@ export function PortfolioCard({ item, quote, onPress }: PortfolioCardProps) {
           <Text style={styles.symbol}>{item.symbol}</Text>
           <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
         </View>
+        <TouchableOpacity style={styles.editButton} onPress={onEdit}>
+          <Text style={styles.editButtonText}>Edit</Text>
+        </TouchableOpacity>
         <View style={styles.rightSection}>
           <Text style={styles.price}>${currentValue.toFixed(2)}</Text>
           <Text style={styles.shares}>{item.shares} shares</Text>
@@ -77,6 +81,18 @@ const styles = StyleSheet.create({
   },
   leftSection: {
     flex: 1,
+  },
+  editButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#F2F2F7',
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  editButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#007AFF',
   },
   rightSection: {
     alignItems: 'flex-end',

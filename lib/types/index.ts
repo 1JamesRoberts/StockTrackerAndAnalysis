@@ -43,7 +43,19 @@ export interface PortfolioItem {
   buyDate: string;
 }
 
-export type TimeRange = '1D' | '1W' | '1M' | '1Y';
+export interface TransactionRecord {
+  id: string;
+  portfolioItemId?: string;
+  symbol: string;
+  name: string;
+  type: 'BUY' | 'SELL';
+  shares: number;
+  price: number;
+  date: string;
+  realizedGain?: number;
+}
+
+export type TimeRange = '1D' | '1W' | '1M' | '1Y' | 'ALL';
 
 export interface ChartDataPoint {
   date: string;
@@ -51,4 +63,15 @@ export interface ChartDataPoint {
   open?: number;
   high?: number;
   low?: number;
+}
+
+export interface NewsArticle {
+  id: number;
+  headline: string;
+  summary: string;
+  url: string;
+  image: string;
+  datetime: number;
+  source: string;
+  related: string;
 }
