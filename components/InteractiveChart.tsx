@@ -91,7 +91,8 @@ export function InteractiveChart({
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const wrapper = document.getElementById('chart-interactive-area');
+    const interactionId = `chart-interactive-area-${chartId}`;
+    const wrapper = document.getElementById(interactionId);
     if (!wrapper) return;
 
     const onMouseMove = (e: MouseEvent) => {
@@ -151,7 +152,7 @@ export function InteractiveChart({
   return (
     <View style={[styles.container, transparentBackground && styles.transparentContainer]}>
       <View style={[styles.card, transparentBackground && styles.transparentCard]}>
-        {!transparentBackground && (
+        {!transparentBackground && timeRange !== 'ALL' && (
           <View style={styles.tabs}>
             {timeRanges.map(range => (
               <Pressable
@@ -178,7 +179,7 @@ export function InteractiveChart({
           )}
 
           <View
-            id="chart-interactive-area"
+            id={`chart-interactive-area-${chartId}`}
             style={[styles.chartArea, { width: chartWidth + PADDING_LEFT + PADDING_RIGHT }]}
             onTouchMove={e => {
               const x = e.nativeEvent.locationX;

@@ -187,5 +187,5 @@ const styles = StyleSheet.create({
   newsSource: { fontSize: 12, fontWeight: '600', color: '#007AFF', marginBottom: 4 },
   newsHeadline: { fontSize: 16, fontWeight: '700', color: '#1C1C1E', marginBottom: 6 },
   newsSummary: { fontSize: 14, color: '#666', lineHeight: 20 },
-  chartContainer: { height: 260, marginTop: 16, marginHorizontal: -16 },
+  chartContainer: { marginTop: 16, marginHorizontal: -16 },
 });

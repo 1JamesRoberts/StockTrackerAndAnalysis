@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { RebalanceFrequency } from '../lib/utils/backtest';
 
 interface AllocationConfigProps {
@@ -42,9 +42,20 @@ export function AllocationConfig({
               >
                 <Text style={styles.buttonText}>-</Text>
               </TouchableOpacity>
-              
-              <Text style={styles.weightText}>{Math.round(weights[index] * 100)}%</Text>
-              
+              <TextInput
+                style={styles.weightInput}
+                value={Math.round(weights[index] * 100).toString()}
+                keyboardType="numeric"
+                onChangeText={(text) => {
+                  const val = parseInt(text.replace(/[^0-9]/g, ''), 10);
+                  if (!isNaN(val)) {
+                    onChangeWeight(index, Math.min(1, Math.max(0, val / 100)));
+                  } else {
+                    onChangeWeight(index, 0);
+                  }
+                }}
+              />
+              <Text style={styles.percentSymbol}>%</Text>
               <TouchableOpacity 
                 style={styles.button} 
                 onPress={() => onChangeWeight(index, Math.min(1, weights[index] + 0.05))}
@@ -133,12 +144,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#007AFF',
   },
-  weightText: {
+  weightInput: {
     fontSize: 14,
     fontWeight: '600',
     color: '#1C1C1E',
-    width: 44,
+    width: 30,
     textAlign: 'center',
+    padding: 0,
+  },
+  percentSymbol: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1C1C1E',
+    marginRight: 8,
   },
   totalRow: {
     flexDirection: 'row',
