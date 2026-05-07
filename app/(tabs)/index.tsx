@@ -8,6 +8,26 @@ import { ManagePositionModal } from '../../components/ManagePositionModal';
 import { InteractiveChart } from '../../components/InteractiveChart';
 import { calculatePortfolioEquityCurve, calculatePortfolioPnLCurve } from '../../lib/utils/math';
 import { PortfolioItem } from '../../lib/types';
+import { PieChartWidget } from '../../components/PieChartWidget';
+
+const COLORS = ['#007AFF', '#34C759', '#FF9500', '#FF3B30', '#5856D6', '#AF52DE', '#FF2D55', '#30B0C7', '#FFCC00', '#E5E5EA'];
+
+const getSectorForSymbol = (symbol: string): string => {
+  const tech = ['AAPL', 'MSFT', 'GOOGL', 'GOOG', 'META', 'AMZN', 'NVDA', 'TSLA', 'AMD', 'INTC', 'CRM', 'NFLX'];
+  const finance = ['JPM', 'BAC', 'WFC', 'C', 'GS', 'MS', 'V', 'MA', 'AXP'];
+  const healthcare = ['JNJ', 'UNH', 'PFE', 'ABBV', 'TMO', 'DHR', 'MRK', 'LLY'];
+  const consumer = ['WMT', 'PG', 'KO', 'PEP', 'COST', 'MCD', 'NKE', 'HD'];
+  const energy = ['XOM', 'CVX', 'COP', 'SLB', 'EOG'];
+  
+  const sym = symbol.toUpperCase();
+  if (tech.includes(sym)) return 'Technology';
+  if (finance.includes(sym)) return 'Financials';
+  if (healthcare.includes(sym)) return 'Healthcare';
+  if (consumer.includes(sym)) return 'Consumer';
+  if (energy.includes(sym)) return 'Energy';
+  
+  return 'Other';
+};
 
 export default function PortfolioScreen() {
   const router = useRouter();
@@ -66,18 +86,47 @@ export default function PortfolioScreen() {
     let totalCost = 0;
     let dailyChangeValue = 0;
 
+    const stockAllocationMap: Record<string, number> = {};
+    const sectorAllocationMap: Record<string, number> = {};
+
     items.forEach(item => {
       const quote = quotesMap[item.symbol];
+      let itemValue = 0;
       if (quote) {
-        totalValue += quote.price * item.shares;
+        itemValue = quote.price * item.shares;
+        totalValue += itemValue;
         dailyChangeValue += quote.change * item.shares;
+      } else {
+        itemValue = item.buyPrice * item.shares;
+        totalValue += itemValue;
       }
       totalCost += item.buyPrice * item.shares;
+
+      stockAllocationMap[item.symbol] = (stockAllocationMap[item.symbol] || 0) + itemValue;
+      
+      const sector = getSectorForSymbol(item.symbol);
+      sectorAllocationMap[sector] = (sectorAllocationMap[sector] || 0) + itemValue;
     });
 
     const totalReturn = totalValue - totalCost;
     const totalReturnPercent = totalCost > 0 ? (totalReturn / totalCost) * 100 : 0;
     const dailyReturnPercent = (totalValue - dailyChangeValue) > 0 ? (dailyChangeValue / (totalValue - dailyChangeValue)) * 100 : 0;
+
+    const stockPieData = Object.entries(stockAllocationMap)
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, value], index) => ({
+        label,
+        value,
+        color: COLORS[index % COLORS.length]
+      }));
+
+    const sectorPieData = Object.entries(sectorAllocationMap)
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, value], index) => ({
+        label,
+        value,
+        color: COLORS[index % COLORS.length]
+      }));
 
     return {
       totalValue,
@@ -85,7 +134,9 @@ export default function PortfolioScreen() {
       totalReturn,
       totalReturnPercent,
       dailyChangeValue,
-      dailyReturnPercent
+      dailyReturnPercent,
+      stockPieData,
+      sectorPieData
     };
   }, [items, quotesMap]);
 
@@ -129,54 +180,69 @@ export default function PortfolioScreen() {
     const isDailyPositive = metrics.dailyChangeValue >= 0;
 
     return (
-      <View style={styles.headerContainer}>
-        <View style={styles.headerTopRow}>
-          <View style={styles.headerMetricsArea}>
-            <Text style={styles.headerTitle}>Portfolio Value</Text>
-            <Text style={styles.totalValue}>${metrics.totalValue.toFixed(2)}</Text>
-            <Text style={styles.totalCost}>Total Invested: ${metrics.totalCost.toFixed(2)}</Text>
+      <View>
+        <View style={styles.headerContainer}>
+          <View style={styles.headerTopRow}>
+            <View style={styles.headerMetricsArea}>
+              <Text style={styles.headerTitle}>Portfolio Value</Text>
+              <Text style={styles.totalValue}>${metrics.totalValue.toFixed(2)}</Text>
+              <Text style={styles.totalCost}>Total Invested: ${metrics.totalCost.toFixed(2)}</Text>
 
-            <View style={styles.metricsRow}>
-              <View style={styles.metricBox}>
-                <Text style={styles.metricLabel}>Total Return</Text>
-                <Text style={[styles.metricValue, isTotalPositive ? styles.positiveText : styles.negativeText]}>
-                  {isTotalPositive ? '+' : ''}${metrics.totalReturn.toFixed(2)}
-                </Text>
-                <Text style={[styles.metricPercent, isTotalPositive ? styles.positiveText : styles.negativeText]}>
-                  {isTotalPositive ? '▲' : '▼'} {Math.abs(metrics.totalReturnPercent).toFixed(2)}%
-                </Text>
-              </View>
+              <View style={styles.metricsRow}>
+                <View style={styles.metricBox}>
+                  <Text style={styles.metricLabel}>Total Return</Text>
+                  <Text style={[styles.metricValue, isTotalPositive ? styles.positiveText : styles.negativeText]}>
+                    {isTotalPositive ? '+' : ''}${metrics.totalReturn.toFixed(2)}
+                  </Text>
+                  <Text style={[styles.metricPercent, isTotalPositive ? styles.positiveText : styles.negativeText]}>
+                    {isTotalPositive ? '▲' : '▼'} {Math.abs(metrics.totalReturnPercent).toFixed(2)}%
+                  </Text>
+                </View>
 
-              <View style={styles.metricBox}>
-                <Text style={styles.metricLabel}>Today's Return</Text>
-                <Text style={[styles.metricValue, isDailyPositive ? styles.positiveText : styles.negativeText]}>
-                  {isDailyPositive ? '+' : ''}${metrics.dailyChangeValue.toFixed(2)}
-                </Text>
-                <Text style={[styles.metricPercent, isDailyPositive ? styles.positiveText : styles.negativeText]}>
-                  {isDailyPositive ? '▲' : '▼'} {Math.abs(metrics.dailyReturnPercent).toFixed(2)}%
-                </Text>
+                <View style={styles.metricBox}>
+                  <Text style={styles.metricLabel}>Today's Return</Text>
+                  <Text style={[styles.metricValue, isDailyPositive ? styles.positiveText : styles.negativeText]}>
+                    {isDailyPositive ? '+' : ''}${metrics.dailyChangeValue.toFixed(2)}
+                  </Text>
+                  <Text style={[styles.metricPercent, isDailyPositive ? styles.positiveText : styles.negativeText]}>
+                    {isDailyPositive ? '▲' : '▼'} {Math.abs(metrics.dailyReturnPercent).toFixed(2)}%
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>
 
-          <View style={styles.headerChartArea}>
-            {pnlCurve.length > 0 ? (
-              <InteractiveChart
-                data={pnlCurve}
-                isPositive={isCurvePositive}
-                timeRange="ALL"
-                onTimeRangeChange={() => { }}
-                transparentBackground={true}
-                isPnL={true}
-              />
-            ) : (
-              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 150 }}>
-                <Text style={{ color: '#8E8E93', fontSize: 12, fontStyle: 'italic', textAlign: 'center' }}>
-                  Not enough data for backtesting.
-                </Text>
-              </View>
-            )}
+            <View style={styles.headerChartArea}>
+              {pnlCurve.length > 0 ? (
+                <InteractiveChart
+                  data={pnlCurve}
+                  isPositive={isCurvePositive}
+                  timeRange="ALL"
+                  onTimeRangeChange={() => { }}
+                  transparentBackground={true}
+                  isPnL={true}
+                />
+              ) : (
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', minHeight: 150 }}>
+                  <Text style={{ color: '#8E8E93', fontSize: 12, fontStyle: 'italic', textAlign: 'center' }}>
+                    Not enough data for backtesting.
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
+        </View>
+
+        <View style={{ marginHorizontal: 16 }}>
+          <PieChartWidget 
+            title="Stock Allocation" 
+            data={metrics.stockPieData} 
+            size={120} 
+          />
+          <PieChartWidget 
+            title="Sector Allocation" 
+            data={metrics.sectorPieData} 
+            size={120} 
+          />
         </View>
       </View>
     );
