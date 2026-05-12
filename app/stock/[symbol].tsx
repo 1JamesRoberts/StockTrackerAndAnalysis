@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { HeaderBackButton } from '@react-navigation/elements';
@@ -11,12 +11,14 @@ import { TimeRange } from '../../lib/types';
 export default function StockDetailsScreen() {
   const { symbol } = useLocalSearchParams<{ symbol: string }>();
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isWideScreen = width >= 768;
   const [timeRange, setTimeRange] = useState<TimeRange>('1M');
   const { data: quote, isLoading: quoteLoading } = useStockQuote(symbol);
   const { data: chartData, isLoading: chartLoading } = useChartData(symbol, timeRange);
   const { addStock } = usePortfolioStore();
   const [modalVisible, setModalVisible] = useState(false);
-  
+
   const handleAddPosition = (shares: number, buyPrice: number, buyDate: string) => {
     if (!quote) return;
     addStock({
@@ -31,7 +33,7 @@ export default function StockDetailsScreen() {
   const handleTimeRangeChange = (range: TimeRange) => {
     setTimeRange(range);
   };
-  
+
   let displayChange = quote?.change || 0;
   let displayChangePercent = quote?.changePercent || 0;
 
@@ -45,17 +47,17 @@ export default function StockDetailsScreen() {
   }
 
   const isPositive = displayChange >= 0;
-  
+
   return (
     <>
-      <Stack.Screen 
-        options={{ 
+      <Stack.Screen
+        options={{
           headerTitle: quote ? quote.symbol : 'Loading...',
           headerLeft: router.canGoBack() ? undefined : (props) => (
-            <HeaderBackButton 
+            <HeaderBackButton
               {...props}
               tintColor="#007AFF"
-              onPress={() => router.replace('/')} 
+              onPress={() => router.replace('/')}
             />
           ),
           headerRight: () => quote ? (
@@ -65,7 +67,7 @@ export default function StockDetailsScreen() {
               </Text>
             </TouchableOpacity>
           ) : null,
-        }} 
+        }}
       />
       {quoteLoading || !quote ? (
         <View style={styles.loadingContainer}>
@@ -76,11 +78,11 @@ export default function StockDetailsScreen() {
           <View style={styles.priceCard}>
             <Text style={styles.symbolText}>{quote.symbol}</Text>
             <Text style={styles.companyName}>{quote.name}</Text>
-            
+
             <View style={styles.priceRow}>
               <Text style={styles.priceText}>${quote.price.toFixed(2)}</Text>
             </View>
-            
+
             <View style={[
               styles.changeContainer,
               isPositive ? styles.positiveBg : styles.negativeBg
@@ -93,36 +95,40 @@ export default function StockDetailsScreen() {
               </Text>
             </View>
           </View>
-          
-          <InteractiveChart 
-            data={chartData || []}
-            isPositive={isPositive}
-            timeRange={timeRange}
-            onTimeRangeChange={handleTimeRangeChange}
-          />
-          
-          <View style={styles.statsCard}>
-            <Text style={styles.sectionTitle}>Statistics</Text>
-            <View style={styles.statsGrid}>
-              <View style={styles.statRow}>
-                <Text style={styles.statLabel}>Open</Text>
-                <Text style={styles.statValue}>${quote.open.toFixed(2)}</Text>
-              </View>
-              <View style={styles.statRow}>
-                <Text style={styles.statLabel}>High</Text>
-                <Text style={styles.statValue}>${quote.high.toFixed(2)}</Text>
-              </View>
-              <View style={styles.statRow}>
-                <Text style={styles.statLabel}>Low</Text>
-                <Text style={styles.statValue}>${quote.low.toFixed(2)}</Text>
-              </View>
-              <View style={styles.statRow}>
-                <Text style={styles.statLabel}>Prev Close</Text>
-                <Text style={styles.statValue}>${quote.previousClose.toFixed(2)}</Text>
-              </View>
-              <View style={styles.statRow}>
-                <Text style={styles.statLabel}>Volume</Text>
-                <Text style={styles.statValue}>{(quote.volume / 1000000).toFixed(2)}M</Text>
+
+          <View style={isWideScreen ? styles.wideRow : undefined}>
+            <View style={isWideScreen ? styles.chartCol : undefined}>
+              <InteractiveChart
+                data={chartData || []}
+                isPositive={isPositive}
+                timeRange={timeRange}
+                onTimeRangeChange={handleTimeRangeChange}
+              />
+            </View>
+
+            <View style={[styles.statsCard, isWideScreen && styles.statsCol]}>
+              <Text style={styles.sectionTitle}>Statistics</Text>
+              <View style={styles.statsGrid}>
+                <View style={styles.statRow}>
+                  <Text style={styles.statLabel}>Open</Text>
+                  <Text style={styles.statValue}>${quote.open.toFixed(2)}</Text>
+                </View>
+                <View style={styles.statRow}>
+                  <Text style={styles.statLabel}>High</Text>
+                  <Text style={styles.statValue}>${quote.high.toFixed(2)}</Text>
+                </View>
+                <View style={styles.statRow}>
+                  <Text style={styles.statLabel}>Low</Text>
+                  <Text style={styles.statValue}>${quote.low.toFixed(2)}</Text>
+                </View>
+                <View style={styles.statRow}>
+                  <Text style={styles.statLabel}>Prev Close</Text>
+                  <Text style={styles.statValue}>${quote.previousClose.toFixed(2)}</Text>
+                </View>
+                <View style={styles.statRow}>
+                  <Text style={styles.statLabel}>Volume</Text>
+                  <Text style={styles.statValue}>{(quote.volume / 1000000).toFixed(2)}M</Text>
+                </View>
               </View>
             </View>
           </View>
@@ -260,5 +266,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#1A1A1A',
+  },
+  wideRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+  },
+  chartCol: {
+    flex: 4,
+  },
+  statsCol: {
+    flex: 1,
+    marginTop: 16,
+    marginBottom: 16,
+    marginLeft: 0,
+    marginRight: 16,
   },
 });
