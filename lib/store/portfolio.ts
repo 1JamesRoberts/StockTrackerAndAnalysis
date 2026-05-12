@@ -31,6 +31,8 @@ interface PortfolioState {
   sellStock: (id: string, sharesToSell: number, sellPrice: number, sellDate: string) => void;
   removeStock: (id: string) => void;
   isInPortfolio: (symbol: string) => boolean;
+  updateTransaction: (id: string, updates: Partial<TransactionRecord>) => void;
+  deleteTransaction: (id: string) => void;
   clearPortfolio: () => void;
   clearTransactions: () => void;
 }
@@ -115,6 +117,20 @@ export const usePortfolioStore = create<PortfolioState>()(
       isInPortfolio: (symbol) => {
         const { items } = get();
         return items.some(item => item.symbol === symbol);
+      },
+
+      updateTransaction: (id, updates) => {
+        const { transactions } = get();
+        set({
+          transactions: transactions.map(t => t.id === id ? { ...t, ...updates } : t),
+        });
+      },
+
+      deleteTransaction: (id) => {
+        const { transactions } = get();
+        set({
+          transactions: transactions.filter(t => t.id !== id),
+        });
       },
 
       clearPortfolio: () => {

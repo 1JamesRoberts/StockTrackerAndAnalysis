@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, createElement } from 'react';
 import { View, Text, TextInput, StyleSheet, Modal, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 interface AddPortfolioItemModalProps {
   visible: boolean;
@@ -12,20 +13,34 @@ interface AddPortfolioItemModalProps {
 export function AddPortfolioItemModal({ visible, symbol, name, onClose, onAdd }: AddPortfolioItemModalProps) {
   const [shares, setShares] = useState('');
   const [buyPrice, setBuyPrice] = useState('');
-  const [buyDate, setBuyDate] = useState(new Date().toISOString().split('T')[0]);
+  const [buyDate, setBuyDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const formatDateDisplay = (date: Date) => {
+    const d = date.getDate().toString().padStart(2, '0');
+    const m = (date.getMonth() + 1).toString().padStart(2, '0');
+    const y = date.getFullYear();
+    return `${d}-${m}-${y}`;
+  };
 
   const handleAdd = () => {
     const parsedShares = parseFloat(shares);
     const parsedPrice = parseFloat(buyPrice);
+    const dateString = buyDate.toISOString().split('T')[0];
 
-    if (isNaN(parsedShares) || isNaN(parsedPrice) || !buyDate) {
-      alert('Please enter valid details');
+    if (isNaN(parsedShares) || isNaN(parsedPrice) || !dateString) {
+      if (Platform.OS === 'web') {
+        window.alert('Please enter valid details');
+      } else {
+        alert('Please enter valid details');
+      }
       return;
     }
 
-    onAdd(parsedShares, parsedPrice, buyDate);
+    onAdd(parsedShares, parsedPrice, dateString);
     setShares('');
     setBuyPrice('');
+    setBuyDate(new Date());
     onClose();
   };
 
@@ -65,13 +80,52 @@ export function AddPortfolioItemModal({ visible, symbol, name, onClose, onAdd }:
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Buy Date (YYYY-MM-DD)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="YYYY-MM-DD"
-              value={buyDate}
-              onChangeText={setBuyDate}
-            />
+            <Text style={styles.label}>Buy Date</Text>
+            {Platform.OS === 'web' ? (
+              createElement('input', {
+                type: 'date',
+                value: buyDate.toISOString().split('T')[0],
+                onChange: (e: any) => {
+                  if (e.target.value) setBuyDate(new Date(e.target.value));
+                },
+                style: { 
+                  padding: '16px', 
+                  borderRadius: '12px', 
+                  border: '1px solid #E5E5EA', 
+                  fontSize: '16px', 
+                  backgroundColor: '#F9F9F9', 
+                  fontFamily: 'inherit', 
+                  width: '100%', 
+                  boxSizing: 'border-box',
+                  color: '#1A1A1A',
+                  outline: 'none'
+                }
+              })
+            ) : (
+              <>
+                <TouchableOpacity 
+                  style={styles.dateSelector} 
+                  onPress={() => setShowDatePicker(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.dateText}>
+                    {formatDateDisplay(buyDate)}
+                  </Text>
+                </TouchableOpacity>
+                {showDatePicker && (
+                  <DateTimePicker
+                    value={buyDate}
+                    mode="date"
+                    display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                    onChange={(event, date) => {
+                      if (Platform.OS === 'android') setShowDatePicker(false);
+                      if (date) setBuyDate(date);
+                    }}
+                    maximumDate={new Date()}
+                  />
+                )}
+              </>
+            )}
           </View>
 
           <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
@@ -132,6 +186,17 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
     backgroundColor: '#F9F9F9',
+  },
+  dateSelector: {
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    borderRadius: 12,
+    padding: 16,
+    backgroundColor: '#F9F9F9',
+  },
+  dateText: {
+    fontSize: 16,
+    color: '#1A1A1A',
   },
   addButton: {
     backgroundColor: '#007AFF',

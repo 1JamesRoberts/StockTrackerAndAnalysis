@@ -271,6 +271,7 @@ export default function PortfolioScreen() {
       <ManagePositionModal
         visible={!!selectedItem}
         item={selectedItem}
+        currentPrice={selectedItem ? quotesMap[selectedItem.symbol]?.price : undefined}
         onClose={() => setSelectedItem(null)}
       />
     </View>

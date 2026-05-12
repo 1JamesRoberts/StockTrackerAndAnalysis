@@ -1,11 +1,14 @@
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert, Platform } from 'react-native';
 import { usePortfolioStore } from '../lib/store/portfolio';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { TransactionRecord } from '../lib/types';
+import { useState } from 'react';
+import { EditTransactionModal } from '../components/EditTransactionModal';
 
 export default function TransactionsScreen() {
-  const { transactions } = usePortfolioStore();
+  const { transactions, deleteTransaction } = usePortfolioStore();
   const router = useRouter();
+  const [selectedTransaction, setSelectedTransaction] = useState<TransactionRecord | null>(null);
 
   // Sort transactions by date descending, then id (or just reverse array to keep it simple, assuming chronological adds)
   const sortedTransactions = [...transactions].sort((a, b) => {
@@ -15,6 +18,39 @@ export default function TransactionsScreen() {
     }
     return new Date(b.date).getTime() - new Date(a.date).getTime();
   });
+
+  const totalRealizedGain = transactions.reduce((acc, t) => acc + (t.realizedGain || 0), 0);
+
+  const renderHeader = () => {
+    if (transactions.length === 0) return null;
+    
+    const isPositive = totalRealizedGain >= 0;
+    
+    return (
+      <View style={styles.summaryCard}>
+        <Text style={styles.summaryLabel}>Total Realized Profit/Loss</Text>
+        <Text style={[styles.summaryValue, isPositive ? styles.gainPositive : styles.gainNegative]}>
+          {isPositive ? '+' : ''}${totalRealizedGain.toFixed(2)}
+        </Text>
+      </View>
+    );
+  };
+
+  const handleDelete = (id: string) => {
+    if (Platform.OS === 'web') {
+      const confirmed = window.confirm('Are you sure you want to delete this transaction record? This will not affect your current portfolio holdings.');
+      if (confirmed) deleteTransaction(id);
+    } else {
+      Alert.alert(
+        'Delete Transaction',
+        'Are you sure you want to delete this transaction record? This will not affect your current portfolio holdings.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Delete', style: 'destructive', onPress: () => deleteTransaction(id) }
+        ]
+      );
+    }
+  };
 
   const renderItem = ({ item }: { item: TransactionRecord }) => {
     const isBuy = item.type === 'BUY';
@@ -31,7 +67,9 @@ export default function TransactionsScreen() {
             </View>
             <Text style={styles.date}>{item.date}</Text>
           </View>
-          <Text style={styles.symbol}>{item.symbol}</Text>
+          <View style={styles.headerRight}>
+            <Text style={styles.symbol}>{item.symbol}</Text>
+          </View>
         </View>
         
         <View style={styles.detailsRow}>
@@ -57,19 +95,33 @@ export default function TransactionsScreen() {
             </Text>
           </View>
         )}
+
+        <View style={styles.actionRow}>
+          <TouchableOpacity 
+            style={styles.editButton} 
+            onPress={() => setSelectedTransaction(item)}
+          >
+            <Text style={styles.editButtonText}>Edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.deleteButton} 
+            onPress={() => handleDelete(item.id)}
+          >
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Transaction Ledger</Text>
-        <View style={{ width: 60 }} />
-      </View>
+      <Stack.Screen 
+        options={{ 
+          headerTitle: 'Transaction Ledger',
+          headerShown: true,
+        }} 
+      />
 
       {sortedTransactions.length === 0 ? (
         <View style={styles.emptyContainer}>
@@ -82,10 +134,17 @@ export default function TransactionsScreen() {
           data={sortedTransactions}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
+          ListHeaderComponent={renderHeader}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      <EditTransactionModal 
+        visible={!!selectedTransaction}
+        transaction={selectedTransaction}
+        onClose={() => setSelectedTransaction(null)}
+      />
     </View>
   );
 }
@@ -95,31 +154,32 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F2F2F7',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    paddingTop: 60,
-    paddingBottom: 16,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  backButton: {
-    width: 60,
-  },
-  backText: {
-    fontSize: 16,
-    color: '#007AFF',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1C1C1E',
-  },
   list: {
     padding: 16,
+  },
+  summaryCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderLeftWidth: 4,
+    borderLeftColor: '#007AFF',
+  },
+  summaryLabel: {
+    fontSize: 14,
+    color: '#8E8E93',
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  summaryValue: {
+    fontSize: 32,
+    fontWeight: '800',
   },
   card: {
     backgroundColor: '#FFFFFF',
@@ -172,6 +232,40 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#1C1C1E',
+  },
+  headerRight: {
+    alignItems: 'flex-end',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  editButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#F2F2F7',
+    borderRadius: 6,
+  },
+  editButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  deleteButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#FFEBEE',
+    borderRadius: 6,
+  },
+  deleteButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FF3B30',
   },
   detailsRow: {
     flexDirection: 'row',

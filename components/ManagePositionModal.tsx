@@ -1,66 +1,97 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, createElement } from 'react';
 import { View, Text, Modal, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { PortfolioItem } from '../lib/types';
 import { usePortfolioStore } from '../lib/store/portfolio';
 
 interface ManagePositionModalProps {
   visible: boolean;
   item: PortfolioItem | null;
+  currentPrice?: number;
   onClose: () => void;
 }
 
-export function ManagePositionModal({ visible, item, onClose }: ManagePositionModalProps) {
+export function ManagePositionModal({ visible, item, currentPrice, onClose }: ManagePositionModalProps) {
   const { updateStock, sellStock, removeStock } = usePortfolioStore();
   const [mode, setMode] = useState<'EDIT' | 'SELL'>('EDIT');
 
   // Edit State
   const [editShares, setEditShares] = useState('');
   const [editPrice, setEditPrice] = useState('');
-  const [editDate, setEditDate] = useState('');
+  const [editDate, setEditDate] = useState(new Date());
+  const [showEditDatePicker, setShowEditDatePicker] = useState(false);
 
   // Sell State
   const [sellSharesAmount, setSellSharesAmount] = useState('');
   const [sellPriceAmount, setSellPriceAmount] = useState('');
-  const [sellDateStr, setSellDateStr] = useState('');
+  const [sellDate, setSellDate] = useState(new Date());
+  const [showSellDatePicker, setShowSellDatePicker] = useState(false);
+
+  const formatDateDisplay = (date: Date) => {
+    const d = date.getDate().toString().padStart(2, '0');
+    const m = (date.getMonth() + 1).toString().padStart(2, '0');
+    const y = date.getFullYear();
+    return `${d}-${m}-${y}`;
+  };
 
   useEffect(() => {
     if (item && visible) {
       setEditShares(item.shares.toString());
       setEditPrice(item.buyPrice.toString());
-      setEditDate(item.buyDate);
+      setEditDate(new Date(item.buyDate));
       
       setSellSharesAmount(item.shares.toString());
-      setSellPriceAmount(item.buyPrice.toString()); // default to current buy price as placeholder
-      setSellDateStr(new Date().toISOString().split('T')[0]);
+      
+      // Default to current market price if available, otherwise buy price
+      const defaultSellPrice = currentPrice || item.buyPrice;
+      setSellPriceAmount(defaultSellPrice.toString());
+      
+      setSellDate(new Date());
       setMode('EDIT');
     }
-  }, [item, visible]);
+  }, [visible, item?.id]);
 
   if (!item) return null;
 
   const handleEditSubmit = () => {
     const s = parseFloat(editShares);
     const p = parseFloat(editPrice);
-    if (isNaN(s) || s <= 0 || isNaN(p) || p <= 0 || !editDate) {
-      Alert.alert('Invalid Input', 'Please enter valid numbers for shares and price, and a valid date.');
+    const dateString = editDate.toISOString().split('T')[0];
+
+    if (isNaN(s) || s <= 0 || isNaN(p) || p <= 0 || !dateString) {
+      if (Platform.OS === 'web') {
+        window.alert('Please enter valid numbers for shares and price, and a valid date.');
+      } else {
+        Alert.alert('Invalid Input', 'Please enter valid numbers for shares and price, and a valid date.');
+      }
       return;
     }
-    updateStock(item.id, { shares: s, buyPrice: p, buyDate: editDate });
+    updateStock(item.id, { shares: s, buyPrice: p, buyDate: dateString });
     onClose();
   };
 
   const handleSellSubmit = () => {
     const s = parseFloat(sellSharesAmount);
     const p = parseFloat(sellPriceAmount);
-    if (isNaN(s) || s <= 0 || isNaN(p) || p <= 0 || !sellDateStr) {
-      Alert.alert('Invalid Input', 'Please enter valid numbers for shares and price, and a valid date.');
+    const dateString = sellDate.toISOString().split('T')[0];
+
+    if (isNaN(s) || s <= 0 || isNaN(p) || p <= 0 || !dateString) {
+      if (Platform.OS === 'web') {
+        window.alert('Please enter valid numbers for shares and price, and a valid date.');
+      } else {
+        Alert.alert('Invalid Input', 'Please enter valid numbers for shares and price, and a valid date.');
+      }
       return;
     }
     if (s > item.shares) {
-      Alert.alert('Invalid Input', 'You cannot sell more shares than you own.');
+      if (Platform.OS === 'web') {
+        window.alert('You cannot sell more shares than you own.');
+      } else {
+        Alert.alert('Invalid Input', 'You cannot sell more shares than you own.');
+      }
       return;
     }
-    sellStock(item.id, s, p, sellDateStr);
+    sellStock(item.id, s, p, dateString);
     onClose();
   };
 
@@ -142,13 +173,52 @@ export function ManagePositionModal({ visible, item, onClose }: ManagePositionMo
                 />
               </View>
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Purchase Date (YYYY-MM-DD)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={editDate}
-                  onChangeText={setEditDate}
-                  placeholder="e.g. 2023-01-15"
-                />
+                <Text style={styles.label}>Purchase Date</Text>
+                {Platform.OS === 'web' ? (
+                  createElement('input', {
+                    type: 'date',
+                    value: editDate.toISOString().split('T')[0],
+                    onChange: (e: any) => {
+                      if (e.target.value) setEditDate(new Date(e.target.value));
+                    },
+                    style: { 
+                      padding: '16px', 
+                      borderRadius: '12px', 
+                      border: '1px solid #E5E5EA', 
+                      fontSize: '16px', 
+                      backgroundColor: '#FAFAFA', 
+                      fontFamily: 'inherit', 
+                      width: '100%', 
+                      boxSizing: 'border-box',
+                      color: '#1C1C1E',
+                      outline: 'none'
+                    }
+                  })
+                ) : (
+                  <>
+                    <TouchableOpacity 
+                      style={styles.dateSelector} 
+                      onPress={() => setShowEditDatePicker(true)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.dateText}>
+                        {formatDateDisplay(editDate)}
+                      </Text>
+                    </TouchableOpacity>
+                    {showEditDatePicker && (
+                      <DateTimePicker
+                        value={editDate}
+                        mode="date"
+                        display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                        onChange={(event, date) => {
+                          if (Platform.OS === 'android') setShowEditDatePicker(false);
+                          if (date) setEditDate(date);
+                        }}
+                        maximumDate={new Date()}
+                      />
+                    )}
+                  </>
+                )}
               </View>
               
               <View style={styles.actionRow}>
@@ -183,13 +253,52 @@ export function ManagePositionModal({ visible, item, onClose }: ManagePositionMo
                 />
               </View>
               <View style={styles.inputGroup}>
-                <Text style={styles.label}>Sell Date (YYYY-MM-DD)</Text>
-                <TextInput
-                  style={styles.input}
-                  value={sellDateStr}
-                  onChangeText={setSellDateStr}
-                  placeholder="e.g. 2023-10-20"
-                />
+                <Text style={styles.label}>Sell Date</Text>
+                {Platform.OS === 'web' ? (
+                  createElement('input', {
+                    type: 'date',
+                    value: sellDate.toISOString().split('T')[0],
+                    onChange: (e: any) => {
+                      if (e.target.value) setSellDate(new Date(e.target.value));
+                    },
+                    style: { 
+                      padding: '16px', 
+                      borderRadius: '12px', 
+                      border: '1px solid #E5E5EA', 
+                      fontSize: '16px', 
+                      backgroundColor: '#FAFAFA', 
+                      fontFamily: 'inherit', 
+                      width: '100%', 
+                      boxSizing: 'border-box',
+                      color: '#1C1C1E',
+                      outline: 'none'
+                    }
+                  })
+                ) : (
+                  <>
+                    <TouchableOpacity 
+                      style={styles.dateSelector} 
+                      onPress={() => setShowSellDatePicker(true)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.dateText}>
+                        {formatDateDisplay(sellDate)}
+                      </Text>
+                    </TouchableOpacity>
+                    {showSellDatePicker && (
+                      <DateTimePicker
+                        value={sellDate}
+                        mode="date"
+                        display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                        onChange={(event, date) => {
+                          if (Platform.OS === 'android') setShowSellDatePicker(false);
+                          if (date) setSellDate(date);
+                        }}
+                        maximumDate={new Date()}
+                      />
+                    )}
+                  </>
+                )}
               </View>
               
               <TouchableOpacity style={styles.submitButton} onPress={handleSellSubmit}>
@@ -282,6 +391,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1C1C1E',
     backgroundColor: '#FAFAFA',
+  },
+  dateSelector: {
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    borderRadius: 12,
+    padding: 16,
+    backgroundColor: '#FAFAFA',
+  },
+  dateText: {
+    fontSize: 16,
+    color: '#1C1C1E',
   },
   actionRow: {
     flexDirection: 'row',
