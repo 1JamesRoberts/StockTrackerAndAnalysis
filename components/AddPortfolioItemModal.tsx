@@ -94,7 +94,7 @@ export function AddPortfolioItemModal({ visible, symbol, name, onClose, onAdd }:
                   border: '1px solid #E5E5EA', 
                   fontSize: '16px', 
                   backgroundColor: '#F9F9F9', 
-                  fontFamily: 'inherit', 
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', 
                   width: '100%', 
                   boxSizing: 'border-box',
                   color: '#1A1A1A',
