@@ -1,4 +1,4 @@
-import { View, Text, FlatList, StyleSheet, RefreshControl, ScrollView } from 'react-native';
+import { View, Text, FlatList, StyleSheet, RefreshControl, ScrollView, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useMemo } from 'react';
 import { usePortfolioStore } from '../../lib/store/portfolio';
@@ -14,6 +14,8 @@ const COLORS = ['#007AFF', '#34C759', '#FF9500', '#FF3B30', '#5856D6', '#AF52DE'
 
 export default function PortfolioScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isWideScreen = width > 768;
   const { items } = usePortfolioStore();
   const [refreshing, setRefreshing] = useState(false);
   const [selectedItem, setSelectedItem] = useState<PortfolioItem | null>(null);
@@ -228,17 +230,21 @@ export default function PortfolioScreen() {
           </View>
         </View>
 
-        <View style={{ marginHorizontal: 16 }}>
-          <PieChartWidget 
-            title="Stock Allocation" 
-            data={metrics.stockPieData} 
-            size={120} 
-          />
-          <PieChartWidget 
-            title="Sector Allocation" 
-            data={metrics.sectorPieData} 
-            size={120} 
-          />
+        <View style={[{ marginHorizontal: 16 }, isWideScreen && { flexDirection: 'row', gap: 16 }]}>
+          <View style={isWideScreen && { flex: 1 }}>
+            <PieChartWidget 
+              title="Stock Allocation" 
+              data={metrics.stockPieData} 
+              size={120} 
+            />
+          </View>
+          <View style={isWideScreen && { flex: 1 }}>
+            <PieChartWidget 
+              title="Sector Allocation" 
+              data={metrics.sectorPieData} 
+              size={120} 
+            />
+          </View>
         </View>
       </View>
     );
