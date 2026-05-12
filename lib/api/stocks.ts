@@ -44,7 +44,12 @@ export async function searchStocks(query: string): Promise<StockSearchResult[]> 
     const data = await fetchTwelveDataAPI('/symbol_search', { symbol: query });
     if (data && data.data && data.data.length > 0) {
       return data.data
-        .filter((r: any) => r.country === 'United States')
+        .filter((r: any) => 
+          r.country === 'United States' || 
+          r.instrument_type === 'Digital Currency' || 
+          r.instrument_type === 'Precious Metal' ||
+          r.instrument_type === 'Commodity'
+        )
         .slice(0, 10)
         .map((r: any) => ({
           symbol: r.symbol,
