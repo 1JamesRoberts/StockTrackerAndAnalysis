@@ -16,9 +16,10 @@ export default function SearchScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedStock, setSelectedStock] = useState<StockSearchResult | null>(null);
   
-  const handleStockPress = (result: StockSearchResult) => {
-    router.push(`/stock/${result.symbol}`);
+  const handleResultPress = (result: StockSearchResult) => {
+    router.push({ pathname: '/stock/[symbol]', params: { symbol: result.symbol } });
   };
+
   
   const handleToggleWatchlist = (result: StockSearchResult) => {
     setSelectedStock(result);
@@ -39,7 +40,7 @@ export default function SearchScreen() {
   const renderItem = ({ item }: { item: StockSearchResult }) => (
     <SearchResultItem
       result={item}
-      onPress={() => handleStockPress(item)}
+      onPress={() => handleResultPress(item)}
       isInWatchlist={isInPortfolio(item.symbol)}
       onToggleWatchlist={() => handleToggleWatchlist(item)}
     />
