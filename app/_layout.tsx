@@ -4,7 +4,7 @@ import { ClerkProvider, SignedIn, SignedOut } from '@clerk/clerk-expo';
 import * as SecureStore from 'expo-secure-store';
 import { LoginScreen } from '../components/LoginScreen';
 
-const CLERK_PUBLISHABLE_KEY = "pk_test_c3VwZXItaGFnZmlzaC05NS5jbGVyay5hY2NvdW50cy5kZXYk";
+const CLERK_PUBLISHABLE_KEY = "pk_test_ZW1pbmVudC1vcmNhLTkyLmNsZXJrLmFjY291bnRzLmRldiQ";
 
 const tokenCache = {
   async getToken(key: string) {
@@ -43,8 +43,8 @@ export default function RootLayout() {
     <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
       <QueryClientProvider client={queryClient}>
         <SignedIn>
-          <Stack 
-            screenOptions={{ 
+          <Stack
+            screenOptions={{
               headerShown: true,
               headerTitle: '',
               headerBackTitle: 'Back',
@@ -53,15 +53,15 @@ export default function RootLayout() {
               headerShadowVisible: false,
             }}
           >
-            <Stack.Screen 
-              name="(tabs)" 
+            <Stack.Screen
+              name="(tabs)"
               options={{ headerShown: false }}
             />
-            <Stack.Screen 
-              name="stock/[symbol]" 
-              options={{ 
+            <Stack.Screen
+              name="stock/[symbol]"
+              options={{
                 headerTitle: 'Stock Details',
-              }} 
+              }}
             />
           </Stack>
         </SignedIn>

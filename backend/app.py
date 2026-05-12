@@ -3,13 +3,14 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
 from bson.objectid import ObjectId
+import certifi
 
 app = Flask(__name__)
 CORS(app)
 
 # MongoDB Atlas URI
 MONGO_URI = "enter your key"
-client = MongoClient(MONGO_URI)
+client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
 db = client.stock_tracker
 
 portfolio_col = db.portfolio
