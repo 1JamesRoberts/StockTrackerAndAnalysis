@@ -15,17 +15,16 @@ export default function SearchScreen() {
   const { addStock, isInPortfolio } = usePortfolioStore();
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedStock, setSelectedStock] = useState<StockSearchResult | null>(null);
-  
-  const handleResultPress = (result: StockSearchResult) => {
-    router.push({ pathname: '/stock/[symbol]', params: { symbol: result.symbol } });
+
+  const handleStockPress = (result: StockSearchResult) => {
+    router.push(`/stock/${result.symbol}`);
   };
 
-  
   const handleToggleWatchlist = (result: StockSearchResult) => {
     setSelectedStock(result);
     setModalVisible(true);
   };
-  
+
   const handleAddPosition = (shares: number, buyPrice: number, buyDate: string) => {
     if (!selectedStock) return;
     addStock({
@@ -36,7 +35,7 @@ export default function SearchScreen() {
       buyDate
     });
   };
-  
+
   const renderItem = ({ item }: { item: StockSearchResult }) => (
     <SearchResultItem
       result={item}
@@ -45,27 +44,27 @@ export default function SearchScreen() {
       onToggleWatchlist={() => handleToggleWatchlist(item)}
     />
   );
-  
+
   return (
     <View style={styles.container}>
       <SearchInput
         value={query}
         onChangeText={setQuery}
-        placeholder="Search by symbol or company name..."
+        placeholder="Search by stock symbol or company name..."
       />
-      
+
       {isLoading && (
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Searching...</Text>
         </View>
       )}
-      
+
       {!isLoading && query.length > 0 && results && results.length === 0 && (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>No stocks found for "{query}"</Text>
         </View>
       )}
-      
+
       {!isLoading && results && results.length > 0 && (
         <FlatList
           data={results}
@@ -75,7 +74,7 @@ export default function SearchScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
-      
+
       {!query && (
         <View style={styles.hintContainer}>
           <Text style={styles.hintIcon}>💡</Text>

@@ -131,7 +131,6 @@ export default function OptimizerScreen() {
       );
       setMcResult(res);
     } catch (e) {
-      console.error(e);
     } finally {
       setIsMCRunning(false);
     }
@@ -160,7 +159,6 @@ export default function OptimizerScreen() {
       setEfResult(res);
       setHoveredPortfolio(res.maxSharpe); // Default to Max Sharpe
     } catch (e) {
-      console.error(e);
     } finally {
       setIsEFRunning(false);
     }

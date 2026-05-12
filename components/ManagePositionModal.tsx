@@ -1,6 +1,6 @@
 import React, { useState, useEffect, createElement } from 'react';
 import { View, Text, Modal, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { DatePickerInput } from './ui/DatePickerInput';
 import { PortfolioItem } from '../lib/types';
 import { usePortfolioStore } from '../lib/store/portfolio';
 
@@ -27,12 +27,7 @@ export function ManagePositionModal({ visible, item, currentPrice, onClose }: Ma
   const [sellDate, setSellDate] = useState(new Date());
   const [showSellDatePicker, setShowSellDatePicker] = useState(false);
 
-  const formatDateDisplay = (date: Date) => {
-    const d = date.getDate().toString().padStart(2, '0');
-    const m = (date.getMonth() + 1).toString().padStart(2, '0');
-    const y = date.getFullYear();
-    return `${d}-${m}-${y}`;
-  };
+
 
   useEffect(() => {
     if (item && visible) {
@@ -172,54 +167,11 @@ export function ManagePositionModal({ visible, item, currentPrice, onClose }: Ma
                   placeholder="e.g. 150.50"
                 />
               </View>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Purchase Date</Text>
-                {Platform.OS === 'web' ? (
-                  createElement('input', {
-                    type: 'date',
-                    value: editDate.toISOString().split('T')[0],
-                    onChange: (e: any) => {
-                      if (e.target.value) setEditDate(new Date(e.target.value));
-                    },
-                    style: { 
-                      padding: '16px', 
-                      borderRadius: '12px', 
-                      border: '1px solid #E5E5EA', 
-                      fontSize: '16px', 
-                      backgroundColor: '#FAFAFA', 
-                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', 
-                      width: '100%', 
-                      boxSizing: 'border-box',
-                      color: '#1C1C1E',
-                      outline: 'none'
-                    }
-                  })
-                ) : (
-                  <>
-                    <TouchableOpacity 
-                      style={styles.dateSelector} 
-                      onPress={() => setShowEditDatePicker(true)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.dateText}>
-                        {formatDateDisplay(editDate)}
-                      </Text>
-                    </TouchableOpacity>
-                    {showEditDatePicker && (
-                      <DateTimePicker
-                        value={editDate}
-                        mode="date"
-                        display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                        onChange={(event, date) => {
-                          if (Platform.OS === 'android') setShowEditDatePicker(false);
-                          if (date) setEditDate(date);
-                        }}
-                        maximumDate={new Date()}
-                      />
-                    )}
-                  </>
-                )}
-              </View>
+              <DatePickerInput
+                label="Purchase Date"
+                date={editDate}
+                onChange={setEditDate}
+              />
               
               <View style={styles.actionRow}>
                 <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
@@ -252,54 +204,11 @@ export function ManagePositionModal({ visible, item, currentPrice, onClose }: Ma
                   placeholder="e.g. 160.00"
                 />
               </View>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Sell Date</Text>
-                {Platform.OS === 'web' ? (
-                  createElement('input', {
-                    type: 'date',
-                    value: sellDate.toISOString().split('T')[0],
-                    onChange: (e: any) => {
-                      if (e.target.value) setSellDate(new Date(e.target.value));
-                    },
-                    style: { 
-                      padding: '16px', 
-                      borderRadius: '12px', 
-                      border: '1px solid #E5E5EA', 
-                      fontSize: '16px', 
-                      backgroundColor: '#FAFAFA', 
-                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif', 
-                      width: '100%', 
-                      boxSizing: 'border-box',
-                      color: '#1C1C1E',
-                      outline: 'none'
-                    }
-                  })
-                ) : (
-                  <>
-                    <TouchableOpacity 
-                      style={styles.dateSelector} 
-                      onPress={() => setShowSellDatePicker(true)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.dateText}>
-                        {formatDateDisplay(sellDate)}
-                      </Text>
-                    </TouchableOpacity>
-                    {showSellDatePicker && (
-                      <DateTimePicker
-                        value={sellDate}
-                        mode="date"
-                        display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                        onChange={(event, date) => {
-                          if (Platform.OS === 'android') setShowSellDatePicker(false);
-                          if (date) setSellDate(date);
-                        }}
-                        maximumDate={new Date()}
-                      />
-                    )}
-                  </>
-                )}
-              </View>
+              <DatePickerInput
+                label="Sell Date"
+                date={sellDate}
+                onChange={setSellDate}
+              />
               
               <TouchableOpacity style={styles.submitButton} onPress={handleSellSubmit}>
                 <Text style={styles.submitButtonText}>Confirm Sale</Text>

@@ -1,14 +1,13 @@
 import { create } from 'zustand';
 import { PortfolioItem, TransactionRecord } from '../types';
 
-const API_BASE_URL = 'http://127.0.0.1:5000/api';
-
 interface PortfolioState {
   userId: string | null;
+  apiClient: (<T>(endpoint: string, options?: RequestInit) => Promise<T>) | null;
   items: PortfolioItem[];
   transactions: TransactionRecord[];
   
-  setUserId: (userId: string | null) => void;
+  setAuth: (userId: string | null, apiClient: <T>(endpoint: string, options?: RequestInit) => Promise<T>) => void;
   initPortfolio: () => Promise<void>;
   
   addStock: (item: Omit<PortfolioItem, 'id'>) => Promise<void>;
@@ -25,11 +24,12 @@ interface PortfolioState {
 
 export const usePortfolioStore = create<PortfolioState>()((set, get) => ({
   userId: null,
+  apiClient: null,
   items: [],
   transactions: [],
   
-  setUserId: (userId: string | null) => {
-    set({ userId });
+  setAuth: (userId, apiClient) => {
+    set({ userId, apiClient });
     if (userId) {
       get().initPortfolio();
     } else {
@@ -38,15 +38,13 @@ export const usePortfolioStore = create<PortfolioState>()((set, get) => ({
   },
 
   initPortfolio: async () => {
-    const { userId } = get();
-    if (!userId) return;
+    const { userId, apiClient } = get();
+    if (!userId || !apiClient) return;
     try {
-      const [itemsRes, txnsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/portfolio/${userId}`),
-        fetch(`${API_BASE_URL}/transactions/${userId}`)
+      const [items, transactions] = await Promise.all([
+        apiClient<PortfolioItem[]>('/portfolio'),
+        apiClient<TransactionRecord[]>('/transactions')
       ]);
-      const items = await itemsRes.json();
-      const transactions = await txnsRes.json();
       set({ items, transactions });
     } catch (e) {
       console.error('Failed to init portfolio', e);
@@ -54,8 +52,8 @@ export const usePortfolioStore = create<PortfolioState>()((set, get) => ({
   },
 
   addStock: async (item) => {
-    const { items, transactions, userId } = get();
-    if (!userId) return;
+    const { items, transactions, userId, apiClient } = get();
+    if (!userId || !apiClient) return;
 
     const itemId = Math.random().toString(36).substring(2, 9);
     const newItem: PortfolioItem = { ...item, id: itemId };
@@ -77,14 +75,12 @@ export const usePortfolioStore = create<PortfolioState>()((set, get) => ({
     });
 
     try {
-      await fetch(`${API_BASE_URL}/portfolio/${userId}`, {
+      await apiClient('/portfolio', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newItem)
       });
-      await fetch(`${API_BASE_URL}/transactions/${userId}`, {
+      await apiClient('/transactions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newTransaction)
       });
     } catch (e) {
@@ -93,17 +89,16 @@ export const usePortfolioStore = create<PortfolioState>()((set, get) => ({
   },
 
   updateStock: async (id, updates) => {
-    const { items, userId } = get();
-    if (!userId) return;
+    const { items, userId, apiClient } = get();
+    if (!userId || !apiClient) return;
     
     set({
       items: items.map(item => item.id === id ? { ...item, ...updates } : item),
     });
 
     try {
-      await fetch(`${API_BASE_URL}/portfolio/${userId}/${id}`, {
+      await apiClient(`/portfolio/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
       });
     } catch (e) {
@@ -112,8 +107,8 @@ export const usePortfolioStore = create<PortfolioState>()((set, get) => ({
   },
 
   sellStock: async (id, sharesToSell, sellPrice, sellDate) => {
-    const { items, transactions, userId } = get();
-    if (!userId) return;
+    const { items, transactions, userId, apiClient } = get();
+    if (!userId || !apiClient) return;
     
     const item = items.find(i => i.id === id);
     if (!item || sharesToSell <= 0) return;
@@ -143,20 +138,18 @@ export const usePortfolioStore = create<PortfolioState>()((set, get) => ({
     });
 
     try {
-      await fetch(`${API_BASE_URL}/transactions/${userId}`, {
+      await apiClient('/transactions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newTransaction)
       });
 
       if (remainingShares > 0) {
-        await fetch(`${API_BASE_URL}/portfolio/${userId}/${id}`, {
+        await apiClient(`/portfolio/${id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ shares: remainingShares })
         });
       } else {
-        await fetch(`${API_BASE_URL}/portfolio/${userId}/${id}`, {
+        await apiClient(`/portfolio/${id}`, {
           method: 'DELETE'
         });
       }
@@ -166,15 +159,15 @@ export const usePortfolioStore = create<PortfolioState>()((set, get) => ({
   },
 
   removeStock: async (id) => {
-    const { items, userId } = get();
-    if (!userId) return;
+    const { items, userId, apiClient } = get();
+    if (!userId || !apiClient) return;
 
     set({
       items: items.filter(item => item.id !== id),
     });
 
     try {
-      await fetch(`${API_BASE_URL}/portfolio/${userId}/${id}`, {
+      await apiClient(`/portfolio/${id}`, {
         method: 'DELETE'
       });
     } catch (e) {
@@ -188,17 +181,16 @@ export const usePortfolioStore = create<PortfolioState>()((set, get) => ({
   },
 
   updateTransaction: async (id, updates) => {
-    const { transactions, userId } = get();
-    if (!userId) return;
+    const { transactions, userId, apiClient } = get();
+    if (!userId || !apiClient) return;
 
     set({
       transactions: transactions.map(t => t.id === id ? { ...t, ...updates } : t),
     });
 
     try {
-      await fetch(`${API_BASE_URL}/transactions/${userId}/${id}`, {
+      await apiClient(`/transactions/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
       });
     } catch (e) {
@@ -207,15 +199,15 @@ export const usePortfolioStore = create<PortfolioState>()((set, get) => ({
   },
 
   deleteTransaction: async (id) => {
-    const { transactions, userId } = get();
-    if (!userId) return;
+    const { transactions, userId, apiClient } = get();
+    if (!userId || !apiClient) return;
 
     set({
       transactions: transactions.filter(t => t.id !== id),
     });
 
     try {
-      await fetch(`${API_BASE_URL}/transactions/${userId}/${id}`, {
+      await apiClient(`/transactions/${id}`, {
         method: 'DELETE'
       });
     } catch (e) {

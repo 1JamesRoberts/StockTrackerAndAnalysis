@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
-import Svg, { Path, Circle, Defs, LinearGradient, Stop, Polygon } from 'react-native-svg';
+import React, { useState, useRef } from 'react';
+import { View, StyleSheet, Text, LayoutChangeEvent, Platform } from 'react-native';
+import Svg, { Path, Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { EfficientFrontierResult, PortfolioPoint } from '../lib/utils/efficientFrontier';
 
 interface EfficientFrontierChartProps {
@@ -21,7 +21,7 @@ export function EfficientFrontierChart({ data, symbols, isLoading, onHover }: Ef
   const chartRef = useRef<View>(null);
   const [activePoint, setActivePoint] = useState<PortfolioPoint | null>(null);
 
-  const handleLayout = (event: any) => {
+  const handleLayout = (event: LayoutChangeEvent) => {
     const { width } = event.nativeEvent.layout;
     const availableWidth = width - PADDING_LEFT - PADDING_RIGHT;
     if (availableWidth > 0) {
@@ -129,20 +129,11 @@ export function EfficientFrontierChart({ data, symbols, isLoading, onHover }: Ef
         ref={chartRef} 
         style={styles.chartBox}
         onLayout={handleLayout}
-        onTouchMove={e => handleMove(e.nativeEvent.locationX)}
-        onTouchEnd={() => { setActivePoint(null); if (onHover) onHover(null); }}
-        onMouseMove={(e: any) => {
-          // On web, nativeEvent.offsetX provides the local coordinate instantly
+        onPointerMove={(e) => {
           const x = e.nativeEvent.offsetX ?? e.nativeEvent.locationX;
-          if (x !== undefined) {
-            handleMove(x);
-          } else if (chartRef.current && e.clientX) {
-            chartRef.current.measure((fx, fy, w, h, px, py) => {
-              handleMove(e.clientX - px);
-            });
-          }
+          if (x !== undefined) handleMove(x);
         }}
-        onMouseLeave={() => { setActivePoint(null); if (onHover) onHover(null); }}
+        onPointerLeave={() => { setActivePoint(null); if (onHover) onHover(null); }}
       >
         {/* Y-Axis */}
         <View style={styles.yAxisLabels}>
@@ -323,11 +314,20 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
     pointerEvents: 'none',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 5,
+      },
+      web: {
+        boxShadow: '0px 2px 4px rgba(0,0,0,0.25)' as any,
+      }
+    }),
     zIndex: 100,
   },
   tooltipText: {
