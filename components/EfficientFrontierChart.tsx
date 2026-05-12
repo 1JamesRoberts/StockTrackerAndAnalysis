@@ -21,16 +21,13 @@ export function EfficientFrontierChart({ data, symbols, isLoading, onHover }: Ef
   const chartRef = useRef<View>(null);
   const [activePoint, setActivePoint] = useState<PortfolioPoint | null>(null);
 
-  useEffect(() => {
-    setTimeout(() => {
-      if (chartRef.current) {
-        chartRef.current.measure((x, y, w, h, pageX, pageY) => {
-          const availableWidth = w - PADDING_LEFT - PADDING_RIGHT;
-          setChartWidth(availableWidth > 0 ? availableWidth : 280);
-        });
-      }
-    }, 50);
-  }, []);
+  const handleLayout = (event: any) => {
+    const { width } = event.nativeEvent.layout;
+    const availableWidth = width - PADDING_LEFT - PADDING_RIGHT;
+    if (availableWidth > 0) {
+      setChartWidth(availableWidth);
+    }
+  };
 
   if (isLoading || !data) {
     return (
@@ -46,15 +43,20 @@ export function EfficientFrontierChart({ data, symbols, isLoading, onHover }: Ef
     return <View style={styles.loadingContainer}><Text style={styles.loadingText}>Not enough variance data.</Text></View>;
   }
 
-  // Find min/max for scaling
-  let minVol = Math.floor(Math.min(...boundaryPoints.map(p => p.volatility)) * 0.9);
-  let maxVol = Math.ceil(Math.max(...boundaryPoints.map(p => p.volatility)) * 1.1);
-  let minRet = Math.floor(Math.min(...boundaryPoints.map(p => p.return)) * 0.9);
-  let maxRet = Math.ceil(Math.max(...boundaryPoints.map(p => p.return)) * 1.1);
+  // Find min/max for scaling relative to their actual values
+  const rawMinVol = Math.min(...boundaryPoints.map(p => p.volatility), minVariance.volatility, maxSharpe.volatility);
+  const rawMaxVol = Math.max(...boundaryPoints.map(p => p.volatility), minVariance.volatility, maxSharpe.volatility);
+  const rawMinRet = Math.min(...boundaryPoints.map(p => p.return), minVariance.return, maxSharpe.return);
+  const rawMaxRet = Math.max(...boundaryPoints.map(p => p.return), minVariance.return, maxSharpe.return);
 
-  // Ensure maxSharpe is inside bounds (it should be, but just in case)
-  maxVol = Math.max(maxVol, maxSharpe.volatility * 1.1);
-  maxRet = Math.max(maxRet, maxSharpe.return * 1.1);
+  // Add 10% padding for better visualization
+  const volPad = (rawMaxVol - rawMinVol) * 0.1 || 0.05;
+  const retPad = (rawMaxRet - rawMinRet) * 0.1 || 0.05;
+
+  const minVol = Math.max(0, rawMinVol - volPad);
+  const maxVol = rawMaxVol + volPad;
+  const minRet = rawMinRet - retPad;
+  const maxRet = rawMaxRet + retPad;
 
   const volRange = maxVol - minVol || 1;
   const retRange = maxRet - minRet || 1;
@@ -126,10 +128,15 @@ export function EfficientFrontierChart({ data, symbols, isLoading, onHover }: Ef
       <View 
         ref={chartRef} 
         style={styles.chartBox}
+        onLayout={handleLayout}
         onTouchMove={e => handleMove(e.nativeEvent.locationX)}
         onTouchEnd={() => { setActivePoint(null); if (onHover) onHover(null); }}
         onMouseMove={(e: any) => {
-          if (chartRef.current) {
+          // On web, nativeEvent.offsetX provides the local coordinate instantly
+          const x = e.nativeEvent.offsetX ?? e.nativeEvent.locationX;
+          if (x !== undefined) {
+            handleMove(x);
+          } else if (chartRef.current && e.clientX) {
             chartRef.current.measure((fx, fy, w, h, px, py) => {
               handleMove(e.clientX - px);
             });
@@ -153,7 +160,7 @@ export function EfficientFrontierChart({ data, symbols, isLoading, onHover }: Ef
         <Text style={styles.xAxisTitle}>Volatility (Risk)</Text>
         <Text style={styles.yAxisTitle}>Expected Return</Text>
 
-        <Svg width={chartWidth + PADDING_LEFT + PADDING_RIGHT} height={CHART_HEIGHT + PADDING_TOP + PADDING_BOTTOM} style={StyleSheet.absoluteFill}>
+        <Svg pointerEvents="none" width={chartWidth + PADDING_LEFT + PADDING_RIGHT} height={CHART_HEIGHT + PADDING_TOP + PADDING_BOTTOM} style={StyleSheet.absoluteFill}>
           <Defs>
             <LinearGradient id="efGradient" x1="0" y1="0" x2="1" y2="0">
               <Stop offset="0" stopColor="#007AFF" />
@@ -194,6 +201,22 @@ export function EfficientFrontierChart({ data, symbols, isLoading, onHover }: Ef
             d={drawStar(msX, msY, 5, 8, 4)} fill="#FF9500" stroke="#FFF" strokeWidth="1"
           />
         </Svg>
+
+        {/* Tooltip Overlay */}
+        {activePoint && (
+          <View 
+            style={[
+              styles.tooltip, 
+              { 
+                left: Math.min(Math.max(10, getX(activePoint.volatility) - 45), chartWidth + PADDING_LEFT - 80), 
+                top: Math.max(0, getY(activePoint.return) - 55) 
+              }
+            ]}
+          >
+            <Text style={styles.tooltipText}>Ret: {(activePoint.return * 100).toFixed(2)}%</Text>
+            <Text style={styles.tooltipText}>Vol: {(activePoint.volatility * 100).toFixed(2)}%</Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.legend}>
@@ -292,5 +315,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#8E8E93',
     fontWeight: '500',
+  },
+  tooltip: {
+    position: 'absolute',
+    backgroundColor: 'rgba(28, 28, 30, 0.9)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    pointerEvents: 'none',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 100,
+  },
+  tooltipText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+    lineHeight: 16,
   },
 });

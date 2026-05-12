@@ -217,7 +217,7 @@ export default function OptimizerScreen() {
             symbols={uniqueSymbols} 
             weights={hoveredPortfolio.weights} 
             title="Portfolio Weights"
-            subtitle={`Ret: ${(hoveredPortfolio.return * 100).toFixed(1)}% • Vol: ${(hoveredPortfolio.volatility * 100).toFixed(1)}% • Sharpe: ${hoveredPortfolio.sharpe.toFixed(2)}`}
+            subtitle={`Ret: ${(hoveredPortfolio.return * 100).toFixed(2)}% • Vol: ${(hoveredPortfolio.volatility * 100).toFixed(2)}% • Sharpe: ${hoveredPortfolio.sharpe.toFixed(2)}`}
           />
         )}
       </View>
