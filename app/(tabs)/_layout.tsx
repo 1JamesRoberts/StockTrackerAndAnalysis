@@ -1,18 +1,20 @@
 import { Tabs, Link } from 'expo-router';
-import { Text, Pressable, View } from 'react-native';
+import { Text, Pressable, View, Platform } from 'react-native';
 import { useAuth } from '@clerk/clerk-expo';
 import { useEffect } from 'react';
 import { usePortfolioStore } from '../../lib/store/portfolio';
+import { useApi } from '../../lib/hooks/useApi';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
   const { userId, signOut } = useAuth();
-  const setUserId = usePortfolioStore((state) => state.setUserId);
+  const setAuth = usePortfolioStore((state) => state.setAuth);
+  const { fetchWithAuth } = useApi();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    if (userId) {
-      setUserId(userId);
-    }
-  }, [userId]);
+    setAuth(userId || null, fetchWithAuth);
+  }, [userId, fetchWithAuth]);
 
   return (
     <Tabs
