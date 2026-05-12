@@ -39,7 +39,7 @@ export default function PortfolioScreen() {
   };
 
   const handleStockPress = (symbol: string) => {
-    router.push(`/stock/${symbol}`);
+     router.push({ pathname: '/stock/[symbol]', params: { symbol } });
   };
 
   const handleEditPress = (item: PortfolioItem) => {
