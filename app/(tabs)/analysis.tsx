@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, RefreshControl, Linking, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, RefreshControl, Linking, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { useMemo, useState } from 'react';
 import { usePortfolioStore } from '../../lib/store/portfolio';
 import { useMultipleStockHistory, useNews } from '../../lib/hooks/useStock';
@@ -11,6 +11,9 @@ import { InteractiveChart } from '../../components/InteractiveChart';
 import { RebalanceFrequency } from '../../lib/utils/backtest';
 
 export default function AnalysisScreen() {
+  const { width } = useWindowDimensions();
+  const isWideScreen = width >= 768;
+
   const { items } = usePortfolioStore();
   const [refreshing, setRefreshing] = useState(false);
   
@@ -89,32 +92,39 @@ export default function AnalysisScreen() {
     >
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Portfolio Backtesting</Text>
-        <AllocationConfig 
-          symbols={uniqueSymbols}
-          weights={targetWeights}
-          onChangeWeight={handleWeightChange}
-          rebalanceFreq={rebalanceFreq}
-          onChangeRebalanceFreq={setRebalanceFreq}
-        />
-
-        {backtest.isReady && Math.abs(targetWeights.reduce((a, b) => a + b, 0) - 1) <= 0.01 ? (
-          <>
-            <QuantitativeMetricsGrid 
-              result={backtest.portfolio} 
-              baseline={backtest.baseline} 
+        <View style={isWideScreen ? styles.wideRow : undefined}>
+          <View style={isWideScreen ? styles.wideCol : undefined}>
+            <AllocationConfig 
+              symbols={uniqueSymbols}
+              weights={targetWeights}
+              onChangeWeight={handleWeightChange}
+              rebalanceFreq={rebalanceFreq}
+              onChangeRebalanceFreq={setRebalanceFreq}
             />
-            <View style={styles.chartContainer}>
-              <InteractiveChart
-                data={backtest.portfolio.equityCurve}
-                baselineData={backtest.baseline.equityCurve}
-                timeRange="ALL"
-                onTimeRangeChange={() => {}}
-                isPositive={backtest.portfolio.totalReturn >= 0}
+          </View>
+
+          <View style={isWideScreen ? styles.wideCol : undefined}>
+            {backtest.isReady && Math.abs(targetWeights.reduce((a, b) => a + b, 0) - 1) <= 0.01 ? (
+              <QuantitativeMetricsGrid 
+                result={backtest.portfolio} 
+                baseline={backtest.baseline} 
               />
-            </View>
-          </>
-        ) : (
-          <Text style={styles.placeholderText}>Adjust allocations to 100% to view backtest results.</Text>
+            ) : (
+              <Text style={styles.placeholderText}>Adjust allocations to 100% to view backtest results.</Text>
+            )}
+          </View>
+        </View>
+
+        {backtest.isReady && Math.abs(targetWeights.reduce((a, b) => a + b, 0) - 1) <= 0.01 && (
+          <View style={styles.chartContainer}>
+            <InteractiveChart
+              data={backtest.portfolio.equityCurve}
+              baselineData={backtest.baseline.equityCurve}
+              timeRange="ALL"
+              onTimeRangeChange={() => {}}
+              isPositive={backtest.portfolio.totalReturn >= 0}
+            />
+          </View>
         )}
       </View>
 
@@ -188,4 +198,6 @@ const styles = StyleSheet.create({
   newsHeadline: { fontSize: 16, fontWeight: '700', color: '#1C1C1E', marginBottom: 6 },
   newsSummary: { fontSize: 14, color: '#666', lineHeight: 20 },
   chartContainer: { marginTop: 16, marginHorizontal: -16 },
+  wideRow: { flexDirection: 'row', gap: 16 },
+  wideCol: { flex: 1 },
 });
