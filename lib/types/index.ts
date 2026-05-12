@@ -75,3 +75,14 @@ export interface NewsArticle {
   source: string;
   related: string;
 }
+
+export interface CompanyProfile {
+  symbol: string;
+  name: string;
+  exchange: string;
+  sector: string;
+  industry: string;
+  ceo: string;
+  website: string;
+  description: string;
+}

@@ -2,32 +2,15 @@ import { View, Text, FlatList, StyleSheet, RefreshControl, ScrollView } from 're
 import { useRouter } from 'expo-router';
 import { useState, useMemo } from 'react';
 import { usePortfolioStore } from '../../lib/store/portfolio';
-import { useMultipleStockQuotes, useMultipleStockHistory } from '../../lib/hooks/useStock';
+import { useMultipleStockQuotes, useMultipleStockHistory, useMultipleCompanyProfiles } from '../../lib/hooks/useStock';
 import { PortfolioCard } from '../../components/PortfolioCard';
 import { ManagePositionModal } from '../../components/ManagePositionModal';
 import { InteractiveChart } from '../../components/InteractiveChart';
 import { calculatePortfolioEquityCurve, calculatePortfolioPnLCurve } from '../../lib/utils/math';
-import { PortfolioItem } from '../../lib/types';
+import { PortfolioItem, CompanyProfile } from '../../lib/types';
 import { PieChartWidget } from '../../components/PieChartWidget';
 
 const COLORS = ['#007AFF', '#34C759', '#FF9500', '#FF3B30', '#5856D6', '#AF52DE', '#FF2D55', '#30B0C7', '#FFCC00', '#E5E5EA'];
-
-const getSectorForSymbol = (symbol: string): string => {
-  const tech = ['AAPL', 'MSFT', 'GOOGL', 'GOOG', 'META', 'AMZN', 'NVDA', 'TSLA', 'AMD', 'INTC', 'CRM', 'NFLX'];
-  const finance = ['JPM', 'BAC', 'WFC', 'C', 'GS', 'MS', 'V', 'MA', 'AXP'];
-  const healthcare = ['JNJ', 'UNH', 'PFE', 'ABBV', 'TMO', 'DHR', 'MRK', 'LLY'];
-  const consumer = ['WMT', 'PG', 'KO', 'PEP', 'COST', 'MCD', 'NKE', 'HD'];
-  const energy = ['XOM', 'CVX', 'COP', 'SLB', 'EOG'];
-  
-  const sym = symbol.toUpperCase();
-  if (tech.includes(sym)) return 'Technology';
-  if (finance.includes(sym)) return 'Financials';
-  if (healthcare.includes(sym)) return 'Healthcare';
-  if (consumer.includes(sym)) return 'Consumer';
-  if (energy.includes(sym)) return 'Energy';
-  
-  return 'Other';
-};
 
 export default function PortfolioScreen() {
   const router = useRouter();
@@ -43,11 +26,13 @@ export default function PortfolioScreen() {
 
   const quoteQueries = useMultipleStockQuotes(uniqueSymbols);
   const historyQueries = useMultipleStockHistory(uniqueSymbols, '1Y');
+  const profileQueries = useMultipleCompanyProfiles(uniqueSymbols);
 
   const onRefresh = () => {
     setRefreshing(true);
     quoteQueries.forEach(query => query.refetch());
     historyQueries.forEach(query => query.refetch());
+    profileQueries.forEach(query => query.refetch());
     setTimeout(() => setRefreshing(false), 1000);
   };
 
@@ -80,6 +65,17 @@ export default function PortfolioScreen() {
     return map;
   }, [uniqueSymbols, historyQueries]);
 
+  // Create a map of symbol -> profile for easy lookup
+  const profilesMap = useMemo(() => {
+    const map: Record<string, CompanyProfile> = {};
+    uniqueSymbols.forEach((symbol, index) => {
+      if (profileQueries[index].data) {
+        map[symbol] = profileQueries[index].data;
+      }
+    });
+    return map;
+  }, [uniqueSymbols, profileQueries]);
+
   // Calculate Portfolio Metrics
   const metrics = useMemo(() => {
     let totalValue = 0;
@@ -104,7 +100,7 @@ export default function PortfolioScreen() {
 
       stockAllocationMap[item.symbol] = (stockAllocationMap[item.symbol] || 0) + itemValue;
       
-      const sector = getSectorForSymbol(item.symbol);
+      const sector = profilesMap[item.symbol]?.sector || 'Other';
       sectorAllocationMap[sector] = (sectorAllocationMap[sector] || 0) + itemValue;
     });
 
@@ -138,7 +134,7 @@ export default function PortfolioScreen() {
       stockPieData,
       sectorPieData
     };
-  }, [items, quotesMap]);
+  }, [items, quotesMap, profilesMap]);
 
   const pnlCurve = useMemo(() => {
     const curve = calculatePortfolioPnLCurve(items, historyMap);
