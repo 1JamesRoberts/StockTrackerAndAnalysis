@@ -1,4 +1,4 @@
-import { StockQuote, StockSearchResult, StockHistory, TimeRange, ChartDataPoint } from '../types';
+import { StockQuote, StockSearchResult, StockHistory, TimeRange, ChartDataPoint, CompanyProfile } from '../types';
 
 const TWELVEDATA_API_KEYS = [
   'd9689515957d4d55bd1fa2a8cf110dbc',
@@ -207,4 +207,30 @@ export async function getChartData(symbol: string, range: TimeRange): Promise<Ch
     high: d.high,
     low: d.low,
   }));
+}
+
+export async function getCompanyProfile(symbol: string): Promise<CompanyProfile> {
+  try {
+    const url = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${symbol}&token=${FINNHUB_API_KEY}`;
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data || Object.keys(data).length === 0 || data.error) {
+      throw new Error(data.error || 'No profile data found');
+    }
+
+    return {
+      symbol: data.ticker || symbol,
+      name: data.name || symbol,
+      exchange: data.exchange || 'Other',
+      sector: data.finnhubIndustry || 'Other',
+      industry: data.finnhubIndustry || 'Other',
+      ceo: 'N/A', // Finnhub free doesn't provide CEO
+      website: data.weburl || '',
+      description: 'N/A', // Finnhub free doesn't provide description
+    };
+  } catch (error) {
+    console.error('Profile error:', error);
+    throw error;
+  }
 }
