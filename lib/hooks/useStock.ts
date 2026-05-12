@@ -1,5 +1,5 @@
 import { useQuery, useQueries } from '@tanstack/react-query';
-import { searchStocks, getQuote, getStockHistory, getChartData, getNews } from '../api/stocks';
+import { searchStocks, getQuote, getStockHistory, getChartData, getNews, getCompanyProfile } from '../api/stocks';
 import { TimeRange } from '../types';
 
 export function useStockSearch(query: string) {
@@ -65,5 +65,16 @@ export function useNews(symbol?: string) {
     queryKey: ['news', symbol || 'general'],
     queryFn: () => getNews(symbol),
     staleTime: 1000 * 60 * 30, // 30 minutes
+  });
+}
+
+export function useMultipleCompanyProfiles(symbols: string[]) {
+  return useQueries({
+    queries: symbols.map((symbol) => ({
+      queryKey: ['profile', symbol],
+      queryFn: () => getCompanyProfile(symbol),
+      enabled: !!symbol,
+      staleTime: 1000 * 60 * 60 * 24, // 24 hours (profile data is stable)
+    })),
   });
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useId } from 'react';
 import { View, StyleSheet, Text } from 'react-native';
-import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, { Path, Defs, LinearGradient, Stop, Circle } from 'react-native-svg';
 import { MonteCarloResult } from '../lib/utils/monteCarlo';
 
 interface MonteCarloFanChartProps {
@@ -18,17 +18,27 @@ export function MonteCarloFanChart({ data, isLoading }: MonteCarloFanChartProps)
   const [chartWidth, setChartWidth] = React.useState(280);
   const chartRef = useRef<View>(null);
   const chartId = useId().replace(/:/g, '');
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-  useEffect(() => {
-    setTimeout(() => {
-      if (chartRef.current) {
-        chartRef.current.measure((x, y, w, h, pageX, pageY) => {
-          const availableWidth = w - PADDING_LEFT - PADDING_RIGHT;
-          setChartWidth(availableWidth > 0 ? availableWidth : 280);
-        });
-      }
-    }, 50);
-  }, []);
+  const handleLayout = (event: any) => {
+    const { width } = event.nativeEvent.layout;
+    const availableWidth = width - PADDING_LEFT - PADDING_RIGHT;
+    if (availableWidth > 0) {
+      setChartWidth(availableWidth);
+    }
+  };
+
+  const handleMove = (xPos: number) => {
+    if (!data) return;
+    if (xPos < PADDING_LEFT || xPos > PADDING_LEFT + chartWidth) {
+      setActiveIndex(null);
+      return;
+    }
+    const days = data.percentile50.length;
+    let index = Math.round(((xPos - PADDING_LEFT) / chartWidth) * (days - 1));
+    index = Math.max(0, Math.min(index, days - 1));
+    setActiveIndex(index);
+  };
 
   if (isLoading || !data) {
     return (
@@ -41,8 +51,12 @@ export function MonteCarloFanChart({ data, isLoading }: MonteCarloFanChartProps)
   const { percentile5, percentile50, percentile95, samplePaths } = data;
   const days = percentile50.length;
 
-  let minPrice = Math.floor(Math.min(...percentile5) * 0.95);
-  let maxPrice = Math.ceil(Math.max(...percentile95) * 1.05);
+  const rawMinPrice = Math.min(...percentile5);
+  const rawMaxPrice = Math.max(...percentile95);
+  const pricePad = (rawMaxPrice - rawMinPrice) * 0.1 || rawMinPrice * 0.1 || 1;
+  
+  const minPrice = Math.max(0, rawMinPrice - pricePad);
+  const maxPrice = rawMaxPrice + pricePad;
   const priceRange = maxPrice - minPrice || 1;
 
   // Helpers to get X and Y coordinates
@@ -84,14 +98,31 @@ export function MonteCarloFanChart({ data, isLoading }: MonteCarloFanChartProps)
 
   return (
     <View style={styles.container}>
-      <View ref={chartRef} style={styles.chartBox}>
+      <View 
+        ref={chartRef} 
+        style={styles.chartBox} 
+        onLayout={handleLayout}
+        onTouchMove={e => handleMove(e.nativeEvent.locationX)}
+        onTouchEnd={() => setActiveIndex(null)}
+        onMouseMove={(e: any) => {
+          const x = e.nativeEvent.offsetX ?? e.nativeEvent.locationX;
+          if (x !== undefined) {
+            handleMove(x);
+          } else if (chartRef.current && e.clientX) {
+            chartRef.current.measure((fx, fy, w, h, px, py) => {
+              handleMove(e.clientX - px);
+            });
+          }
+        }}
+        onMouseLeave={() => setActiveIndex(null)}
+      >
         <View style={styles.yAxisLabels}>
           <Text style={styles.axisLabel}>${maxPrice.toFixed(2)}</Text>
           <Text style={styles.axisLabel}>${((maxPrice + minPrice) / 2).toFixed(2)}</Text>
           <Text style={styles.axisLabel}>${minPrice.toFixed(2)}</Text>
         </View>
 
-        <Svg width={chartWidth + PADDING_LEFT + PADDING_RIGHT} height={CHART_HEIGHT + PADDING_TOP + PADDING_BOTTOM} style={StyleSheet.absoluteFill}>
+        <Svg pointerEvents="none" width={chartWidth + PADDING_LEFT + PADDING_RIGHT} height={CHART_HEIGHT + PADDING_TOP + PADDING_BOTTOM} style={StyleSheet.absoluteFill}>
           <Defs>
             <LinearGradient id={`fanGradient-${chartId}`} x1="0" y1="0" x2="0" y2="1">
               <Stop offset="0" stopColor="#007AFF" stopOpacity="0.2" />
@@ -106,7 +137,49 @@ export function MonteCarloFanChart({ data, isLoading }: MonteCarloFanChartProps)
           ))}
 
           <Path d={medianPath} stroke="#007AFF" strokeWidth="2.5" fill="none" />
+          
+          {/* Active Hover Line and Point */}
+          {activeIndex !== null && (
+            <>
+              <Path 
+                d={`M ${getX(activeIndex)} ${PADDING_TOP} L ${getX(activeIndex)} ${PADDING_TOP + CHART_HEIGHT}`} 
+                stroke="#E5E5EA" 
+                strokeWidth="1" 
+                strokeDasharray="4 4" 
+              />
+              <Circle 
+                cx={getX(activeIndex)} 
+                cy={getY(percentile50[activeIndex])} 
+                r="5" 
+                fill="#007AFF" 
+                stroke="#FFF" 
+                strokeWidth="2" 
+              />
+            </>
+          )}
         </Svg>
+
+        {/* Tooltip Overlay */}
+        {activeIndex !== null && (
+          <View 
+            style={[
+              styles.tooltip, 
+              { 
+                left: Math.min(Math.max(10, getX(activeIndex) - 50), chartWidth + PADDING_LEFT - 80), 
+                top: Math.max(0, getY(percentile50[activeIndex]) - 75) 
+              }
+            ]}
+          >
+            <Text style={styles.tooltipText}>Day {activeIndex}</Text>
+            <Text style={styles.tooltipText}>Exp: ${percentile50[activeIndex].toFixed(2)}</Text>
+            <Text style={[styles.tooltipText, {fontSize: 10, color: '#AEAEB2', fontWeight: '500'}]}>
+              High: ${percentile95[activeIndex].toFixed(2)}
+            </Text>
+            <Text style={[styles.tooltipText, {fontSize: 10, color: '#AEAEB2', fontWeight: '500'}]}>
+              Low: ${percentile5[activeIndex].toFixed(2)}
+            </Text>
+          </View>
+        )}
       </View>
       <View style={styles.legend}>
         <View style={styles.legendItem}>
@@ -174,5 +247,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#8E8E93',
     fontWeight: '500',
+  },
+  tooltip: {
+    position: 'absolute',
+    backgroundColor: 'rgba(28, 28, 30, 0.9)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    pointerEvents: 'none',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    zIndex: 100,
+  },
+  tooltipText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
+    lineHeight: 16,
   },
 });
