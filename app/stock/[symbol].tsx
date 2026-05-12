@@ -32,7 +32,19 @@ export default function StockDetailsScreen() {
     setTimeRange(range);
   };
   
-  const isPositive = quote ? quote.change >= 0 : true;
+  let displayChange = quote?.change || 0;
+  let displayChangePercent = quote?.changePercent || 0;
+
+  if (chartData && chartData.length > 0 && quote) {
+    if (timeRange !== '1D') {
+      const startPrice = chartData[0].price;
+      const currentPrice = quote.price;
+      displayChange = currentPrice - startPrice;
+      displayChangePercent = startPrice > 0 ? (displayChange / startPrice) * 100 : 0;
+    }
+  }
+
+  const isPositive = displayChange >= 0;
   
   return (
     <>
@@ -77,7 +89,7 @@ export default function StockDetailsScreen() {
                 styles.changeText,
                 isPositive ? styles.positiveText : styles.negativeText
               ]}>
-                {isPositive ? '▲' : '▼'} ${Math.abs(quote.change).toFixed(2)} ({Math.abs(quote.changePercent).toFixed(2)}%)
+                {isPositive ? '▲' : '▼'} ${Math.abs(displayChange).toFixed(2)} ({Math.abs(displayChangePercent).toFixed(2)}%)
               </Text>
             </View>
           </View>
