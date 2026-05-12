@@ -25,7 +25,7 @@ async function fetchTwelveDataAPI(endpoint: string, params: Record<string, strin
 
     // If rate limit is reached, switch to the next key and retry
     if (data && data.code === 429) {
-      console.log(`API key ${currentKeyIndex + 1} limit reached, rotating...`);
+
       currentKeyIndex = (currentKeyIndex + 1) % TWELVEDATA_API_KEYS.length;
       continue;
     }
@@ -56,7 +56,7 @@ export async function searchStocks(query: string): Promise<StockSearchResult[]> 
     }
     return [];
   } catch (error) {
-    console.error('Search error:', error);
+
     return [];
   }
 }
@@ -82,7 +82,7 @@ export async function getQuote(symbol: string): Promise<StockQuote> {
       volume: parseInt(data.volume, 10),
     };
   } catch (error) {
-    console.error('Quote error:', error);
+
     throw error;
   }
 }
@@ -124,7 +124,7 @@ export async function getStockHistory(symbol: string, range: TimeRange = '1M'): 
       volume: parseInt(r.volume, 10),
     }));
   } catch (error) {
-    console.error('History error:', error);
+
     return [];
   }
 }
@@ -154,7 +154,7 @@ export async function getIntradayData(symbol: string): Promise<ChartDataPoint[]>
       low: parseFloat(r.low),
     }));
   } catch (error) {
-    console.error('Intraday error:', error);
+
     return [];
   }
 }
@@ -183,13 +183,13 @@ export async function getNews(symbol?: string): Promise<any[]> {
 
     // Sometimes Finnhub returns { error: "..." } if limit reached
     if (data.error) {
-      console.error('Finnhub API Error:', data.error);
+
       return [];
     }
 
     return Array.isArray(data) ? data : [];
   } catch (error) {
-    console.error('News error:', error);
+
     return [];
   }
 }
@@ -230,7 +230,7 @@ export async function getCompanyProfile(symbol: string): Promise<CompanyProfile>
       description: 'N/A', // Finnhub free doesn't provide description
     };
   } catch (error) {
-    console.error('Profile error:', error);
+
     throw error;
   }
 }

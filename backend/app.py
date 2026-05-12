@@ -35,70 +35,50 @@ def require_auth(f):
         return f(*args, **kwargs)
     return decorated
 
-@app.route('/api/portfolio', methods=['GET'])
+@app.route('/api/portfolio', methods=['GET', 'POST'])
 @require_auth
-def get_portfolio():
-    items = list(portfolio_col.find({"user_id": g.user_id}, {"_id": 0}))
-    return jsonify(items)
+def handle_portfolio():
+    if request.method == 'GET':
+        items = list(portfolio_col.find({"user_id": g.user_id}, {"_id": 0}))
+        return jsonify(items)
+    elif request.method == 'POST':
+        data = request.json
+        data['user_id'] = g.user_id
+        portfolio_col.insert_one(data.copy())
+        if '_id' in data:
+            del data['_id']
+        return jsonify(data), 201
 
-@app.route('/api/portfolio', methods=['POST'])
+@app.route('/api/portfolio/<item_id>', methods=['PUT', 'DELETE'])
 @require_auth
-def add_portfolio_item():
-    data = request.json
-    data['user_id'] = g.user_id
-    portfolio_col.insert_one(data.copy())
-    
-    if '_id' in data:
-        del data['_id']
-    return jsonify(data), 201
-
-@app.route('/api/portfolio/<item_id>', methods=['PUT'])
-@require_auth
-def update_portfolio_item(item_id):
-    updates = request.json
-    portfolio_col.update_one(
-        {"user_id": g.user_id, "id": item_id},
-        {"$set": updates}
-    )
+def manage_portfolio_item(item_id):
+    if request.method == 'PUT':
+        portfolio_col.update_one({"user_id": g.user_id, "id": item_id}, {"$set": request.json})
+    elif request.method == 'DELETE':
+        portfolio_col.delete_one({"user_id": g.user_id, "id": item_id})
     return jsonify({"success": True})
 
-@app.route('/api/portfolio/<item_id>', methods=['DELETE'])
+@app.route('/api/transactions', methods=['GET', 'POST'])
 @require_auth
-def delete_portfolio_item(item_id):
-    portfolio_col.delete_one({"user_id": g.user_id, "id": item_id})
-    return jsonify({"success": True})
+def handle_transactions():
+    if request.method == 'GET':
+        items = list(transactions_col.find({"user_id": g.user_id}, {"_id": 0}))
+        return jsonify(items)
+    elif request.method == 'POST':
+        data = request.json
+        data['user_id'] = g.user_id
+        transactions_col.insert_one(data.copy())
+        if '_id' in data:
+            del data['_id']
+        return jsonify(data), 201
 
-@app.route('/api/transactions', methods=['GET'])
+@app.route('/api/transactions/<txn_id>', methods=['PUT', 'DELETE'])
 @require_auth
-def get_transactions():
-    items = list(transactions_col.find({"user_id": g.user_id}, {"_id": 0}))
-    return jsonify(items)
-
-@app.route('/api/transactions', methods=['POST'])
-@require_auth
-def add_transaction():
-    data = request.json
-    data['user_id'] = g.user_id
-    transactions_col.insert_one(data.copy())
-    
-    if '_id' in data:
-        del data['_id']
-    return jsonify(data), 201
-
-@app.route('/api/transactions/<txn_id>', methods=['PUT'])
-@require_auth
-def update_transaction(txn_id):
-    updates = request.json
-    transactions_col.update_one(
-        {"user_id": g.user_id, "id": txn_id},
-        {"$set": updates}
-    )
-    return jsonify({"success": True})
-
-@app.route('/api/transactions/<txn_id>', methods=['DELETE'])
-@require_auth
-def delete_transaction(txn_id):
-    transactions_col.delete_one({"user_id": g.user_id, "id": txn_id})
+def manage_transaction(txn_id):
+    if request.method == 'PUT':
+        transactions_col.update_one({"user_id": g.user_id, "id": txn_id}, {"$set": request.json})
+    elif request.method == 'DELETE':
+        transactions_col.delete_one({"user_id": g.user_id, "id": txn_id})
     return jsonify({"success": True})
 
 if __name__ == '__main__':

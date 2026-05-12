@@ -1,6 +1,6 @@
 import React, { useState, useEffect, createElement } from 'react';
 import { View, Text, Modal, StyleSheet, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Alert } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { DatePickerInput } from './ui/DatePickerInput';
 import { TransactionRecord } from '../lib/types';
 import { usePortfolioStore } from '../lib/store/portfolio';
 
@@ -19,12 +19,7 @@ export function EditTransactionModal({ visible, transaction, onClose }: EditTran
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [gain, setGain] = useState('');
 
-  const formatDateDisplay = (date: Date) => {
-    const d = date.getDate().toString().padStart(2, '0');
-    const m = (date.getMonth() + 1).toString().padStart(2, '0');
-    const y = date.getFullYear();
-    return `${d}-${m}-${y}`;
-  };
+
 
   useEffect(() => {
     if (transaction && visible) {
@@ -99,54 +94,11 @@ export function EditTransactionModal({ visible, transaction, onClose }: EditTran
                 keyboardType="numeric"
               />
             </View>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Date</Text>
-              {Platform.OS === 'web' ? (
-                createElement('input', {
-                  type: 'date',
-                  value: date.toISOString().split('T')[0],
-                  onChange: (e: any) => {
-                    if (e.target.value) setDate(new Date(e.target.value));
-                  },
-                  style: { 
-                    padding: '16px', 
-                    borderRadius: '12px', 
-                    border: '1px solid #E5E5EA', 
-                    fontSize: '16px', 
-                    color: '#1C1C1E', 
-                    backgroundColor: '#FAFAFA', 
-                    fontFamily: 'inherit', 
-                    width: '100%', 
-                    boxSizing: 'border-box',
-                    outline: 'none'
-                  }
-                })
-              ) : (
-                <>
-                  <TouchableOpacity 
-                    style={styles.dateSelector} 
-                    onPress={() => setShowDatePicker(true)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.dateText}>
-                      {formatDateDisplay(date)}
-                    </Text>
-                  </TouchableOpacity>
-                  {showDatePicker && (
-                    <DateTimePicker
-                      value={date}
-                      mode="date"
-                      display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                      onChange={(event, selectedDate) => {
-                        if (Platform.OS === 'android') setShowDatePicker(false);
-                        if (selectedDate) setDate(selectedDate);
-                      }}
-                      maximumDate={new Date()}
-                    />
-                  )}
-                </>
-              )}
-            </View>
+            <DatePickerInput
+              label="Date"
+              date={date}
+              onChange={setDate}
+            />
 
             {transaction.type === 'SELL' && (
               <View style={styles.inputGroup}>
