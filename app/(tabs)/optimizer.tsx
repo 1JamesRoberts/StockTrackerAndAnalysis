@@ -73,10 +73,14 @@ export default function OptimizerScreen() {
     // Current Portfolio weights
     let totalValue = 0;
     const weights: number[] = [];
-    items.forEach(item => {
-      const prices = pricesMap[item.symbol];
+    uniqueSymbols.forEach(symbol => {
+      const symbolShares = items
+        .filter(item => item.symbol === symbol)
+        .reduce((sum, item) => sum + item.shares, 0);
+
+      const prices = pricesMap[symbol];
       if (prices && prices.length > 0) {
-        const val = prices[prices.length - 1] * item.shares;
+        const val = prices[prices.length - 1] * symbolShares;
         weights.push(val);
         totalValue += val;
       } else {
