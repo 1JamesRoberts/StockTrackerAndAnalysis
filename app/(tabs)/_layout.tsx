@@ -1,7 +1,19 @@
 import { Tabs, Link } from 'expo-router';
-import { Text, Pressable } from 'react-native';
+import { Text, Pressable, View } from 'react-native';
+import { useAuth } from '@clerk/clerk-expo';
+import { useEffect } from 'react';
+import { usePortfolioStore } from '../../lib/store/portfolio';
 
 export default function TabLayout() {
+  const { userId, signOut } = useAuth();
+  const setUserId = usePortfolioStore((state) => state.setUserId);
+
+  useEffect(() => {
+    if (userId) {
+      setUserId(userId);
+    }
+  }, [userId]);
+
   return (
     <Tabs
       screenOptions={{
@@ -26,11 +38,16 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Text style={{ fontSize: 20 }}>💼</Text>,
           headerTitle: 'My Portfolio',
           headerRight: () => (
-            <Link href="/transactions" asChild>
-              <Pressable style={{ marginRight: 16 }}>
-                <Text style={{ fontSize: 18 }}>🧾</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Link href="/transactions" asChild>
+                <Pressable style={{ marginRight: 16 }}>
+                  <Text style={{ fontSize: 18 }}>🧾</Text>
+                </Pressable>
+              </Link>
+              <Pressable style={{ marginRight: 16 }} onPress={() => signOut()}>
+                <Text style={{ fontSize: 14, color: '#FF3B30', fontWeight: '600' }}>Logout</Text>
               </Pressable>
-            </Link>
+            </View>
           ),
         }}
       />
