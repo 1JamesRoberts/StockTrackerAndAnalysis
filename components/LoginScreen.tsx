@@ -55,6 +55,7 @@ export function LoginScreen() {
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
       <View style={styles.card}>
         <View style={styles.header}>
+          <Text style={styles.brandTitle}>Baht</Text>
           <Text style={styles.title}>{isSignInForm ? 'Sign in' : 'Create an account'}</Text>
           <Text style={styles.subtitle}>
             {isSignInForm ? 'Welcome back! Please enter your details.' : 'Enter your details to get started.'}
@@ -134,6 +135,13 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: 32,
     alignItems: 'center',
+  },
+  brandTitle: {
+    fontSize: 48,
+    fontWeight: '900',
+    color: '#007AFF',
+    marginBottom: 16,
+    letterSpacing: -1,
   },
   title: { 
     fontSize: 24, 
