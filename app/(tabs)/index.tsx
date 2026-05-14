@@ -180,7 +180,7 @@ export default function PortfolioScreen() {
     return (
       <View>
         <View style={styles.headerContainer}>
-          <View style={styles.headerTopRow}>
+          <View style={[styles.headerTopRow, !isWideScreen && { flexDirection: 'column', alignItems: 'stretch', gap: 24 }]}>
             <View style={styles.headerMetricsArea}>
               <Text style={styles.headerTitle}>Portfolio Value</Text>
               <Text style={styles.totalValue}>${metrics.totalValue.toFixed(2)}</Text>

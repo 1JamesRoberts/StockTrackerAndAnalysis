@@ -134,6 +134,11 @@ export function EfficientFrontierChart({ data, symbols, isLoading, onHover }: Ef
           if (x !== undefined) handleMove(x);
         }}
         onPointerLeave={() => { setActivePoint(null); if (onHover) onHover(null); }}
+        onTouchMove={(e) => {
+          const x = e.nativeEvent.locationX;
+          if (x !== undefined) handleMove(x);
+        }}
+        onTouchEnd={() => { setActivePoint(null); if (onHover) onHover(null); }}
       >
         {/* Y-Axis */}
         <View style={styles.yAxisLabels}>

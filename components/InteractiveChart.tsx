@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useId } from 'react';
-import { View, StyleSheet, Text, Pressable } from 'react-native';
+import { View, StyleSheet, Text, Pressable, Platform } from 'react-native';
 import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { ChartDataPoint, TimeRange } from '../lib/types';
 
@@ -89,7 +89,7 @@ export function InteractiveChart({
   const selectedPoint = hoverIndex !== null ? points[hoverIndex] : null;
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
     const interactionId = `chart-interactive-area-${chartId}`;
     const wrapper = document.getElementById(interactionId);

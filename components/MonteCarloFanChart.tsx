@@ -107,6 +107,11 @@ export function MonteCarloFanChart({ data, isLoading }: MonteCarloFanChartProps)
           if (x !== undefined) handleMove(x);
         }}
         onPointerLeave={() => setActiveIndex(null)}
+        onTouchMove={(e) => {
+          const x = e.nativeEvent.locationX;
+          if (x !== undefined) handleMove(x);
+        }}
+        onTouchEnd={() => setActiveIndex(null)}
       >
         <View style={styles.yAxisLabels}>
           <Text style={styles.axisLabel}>${maxPrice.toFixed(2)}</Text>
