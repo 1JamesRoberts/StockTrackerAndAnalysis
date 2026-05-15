@@ -132,7 +132,7 @@ export default function TransactionsScreen() {
       ) : (
         <FlatList
           data={sortedTransactions}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item, index) => `${item.id}-${index}`}
           renderItem={renderItem}
           ListHeaderComponent={renderHeader}
           contentContainerStyle={styles.list}

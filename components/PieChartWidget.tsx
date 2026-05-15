@@ -105,16 +105,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1C1C1E',
     marginBottom: 16,
+    textAlign: 'center',
   },
   content: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
   },
   legendContainer: {
-    flex: 1,
     marginLeft: 16,
     gap: 8,
+    flexShrink: 1,
   },
   legendItem: {
     flexDirection: 'row',
@@ -128,7 +129,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   legendText: {
-    flex: 1,
+    flexShrink: 1,
   },
   legendLabel: {
     fontSize: 14,

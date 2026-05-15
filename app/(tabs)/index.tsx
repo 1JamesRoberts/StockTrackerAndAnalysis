@@ -39,7 +39,7 @@ export default function PortfolioScreen() {
   };
 
   const handleStockPress = (symbol: string) => {
-     router.push({ pathname: '/stock/[symbol]', params: { symbol } });
+    router.push({ pathname: '/stock/[symbol]', params: { symbol } });
   };
 
   const handleEditPress = (item: PortfolioItem) => {
@@ -101,7 +101,7 @@ export default function PortfolioScreen() {
       totalCost += item.buyPrice * item.shares;
 
       stockAllocationMap[item.symbol] = (stockAllocationMap[item.symbol] || 0) + itemValue;
-      
+
       const sector = profilesMap[item.symbol]?.sector || 'Other';
       sectorAllocationMap[sector] = (sectorAllocationMap[sector] || 0) + itemValue;
     });
@@ -140,7 +140,7 @@ export default function PortfolioScreen() {
 
   const pnlCurve = useMemo(() => {
     const curve = calculatePortfolioPnLCurve(items, historyMap);
-    
+
     // Append the current live portfolio value
     if (metrics.totalReturn !== undefined) {
       const todayStr = new Date().toISOString().split('T')[0];
@@ -153,7 +153,7 @@ export default function PortfolioScreen() {
         });
       }
     }
-    
+
     return curve;
   }, [items, historyMap, metrics.totalReturn]);
 
@@ -232,17 +232,17 @@ export default function PortfolioScreen() {
 
         <View style={[{ marginHorizontal: 16 }, isWideScreen && { flexDirection: 'row', gap: 16 }]}>
           <View style={isWideScreen && { flex: 1 }}>
-            <PieChartWidget 
-              title="Stock Allocation" 
-              data={metrics.stockPieData} 
-              size={120} 
+            <PieChartWidget
+              title="Stock Allocation"
+              data={metrics.stockPieData}
+              size={120}
             />
           </View>
           <View style={isWideScreen && { flex: 1 }}>
-            <PieChartWidget 
-              title="Sector Allocation" 
-              data={metrics.sectorPieData} 
-              size={120} 
+            <PieChartWidget
+              title="Sector Allocation"
+              data={metrics.sectorPieData}
+              size={120}
             />
           </View>
         </View>
@@ -254,7 +254,7 @@ export default function PortfolioScreen() {
     <View style={styles.container}>
       <FlatList
         data={items}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => `${item.id}-${index}`}
         ListHeaderComponent={renderHeader}
         renderItem={({ item }) => (
           <PortfolioCard
