@@ -12,7 +12,7 @@ interface EfficientFrontierChartProps {
 
 const PADDING_TOP = 20;
 const PADDING_BOTTOM = 30;
-const PADDING_LEFT = 50;
+const PADDING_LEFT = 60;
 const PADDING_RIGHT = 30;
 const CHART_HEIGHT = 220;
 
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   },
   yAxisLabels: {
     position: 'absolute',
-    left: 0,
+    left: 20,
     top: PADDING_TOP - 6,
     bottom: PADDING_BOTTOM - 6,
     justifyContent: 'space-between',
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   },
   yAxisTitle: {
     position: 'absolute',
-    left: -20,
+    left: -30,
     top: CHART_HEIGHT / 2,
     transform: [{ rotate: '-90deg' }],
     fontSize: 10,
