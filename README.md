@@ -62,14 +62,30 @@ uv run app.py
 ### Terminal 2: Start the Frontend App
 Once the backend is running, you can start the Expo app.
 
+**For Web:**
 ```bash
 # Navigate to the frontend directory
 cd frontend
 
-# Start the frontend app
+# Start the frontend web app
 npm run web
 ```
 *The web app will start, and you can view it in your browser.*
+
+**For Android Emulator (Native App):**
+```bash
+# Navigate to the frontend directory
+cd frontend
+
+# Compile the native code and install on the emulator
+npm run android
+```
+
+> [!IMPORTANT]
+> **Why `npm run android` instead of pressing 'a' in `npm run web`?**
+> The project uses advanced libraries (like Reanimated and SVG) which contain custom C++/Java code. 
+> - `npm run android`: **Compiles all the custom native code** into an Android app, installs it on your emulator, and then starts the JavaScript server.
+> - `npm run web` (or `npx expo start`): **Only starts the JavaScript server**. If you just press `a` in this terminal without having built the native app first, it will try to launch Expo Go. Because Expo Go doesn't contain the custom native code for this app, the app will instantly crash with a `TurboModuleRegistry` error.
 
 ---
 
