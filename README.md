@@ -41,6 +41,20 @@ uv venv
 uv pip install -r requirements.txt
 ```
 
+**Environment Configuration:**
+The backend requires a MongoDB connection string. We use `python-dotenv` to manage this securely.
+
+Create a `.env` file in the `backend` directory (you can copy `.env.example`):
+```bash
+cp .env.example .env
+```
+
+Then open `backend/.env` and insert your MongoDB URI:
+```env
+MONGO_URI="mongodb+srv://<username>:<password>@<cluster-url>/?appName=Baht"
+```
+*(Note: Your `.env` file is excluded from Git to keep your credentials safe.)*
+
 ---
 
 ## 🚀 How to Run the App
