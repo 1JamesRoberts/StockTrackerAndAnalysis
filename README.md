@@ -1,4 +1,4 @@
-# Stock Tracker & Analysis App
+# Stock Tracker & Analysis App (Baht)
 
 This repository contains a full-stack application with a React Native/Expo frontend and a Python (Flask) backend for managing user portfolios and transactions.
 
