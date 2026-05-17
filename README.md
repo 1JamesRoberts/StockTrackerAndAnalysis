@@ -19,7 +19,10 @@ You will need to set up both the frontend and the backend independently.
 The frontend uses npm for dependency management.
 
 ```bash
-# From the root of the repository
+# Navigate to the frontend directory
+cd frontend
+
+# Install dependencies
 npm install
 ```
 *(If you encounter dependency conflicts, you can use `npm install --legacy-peer-deps`)*
@@ -60,7 +63,10 @@ uv run app.py
 Once the backend is running, you can start the Expo app.
 
 ```bash
-# From the root of the repository
+# Navigate to the frontend directory
+cd frontend
+
+# Start the frontend app
 npm run web
 ```
 *The web app will start, and you can view it in your browser.*
@@ -70,7 +76,7 @@ npm run web
 ## ⚠️ Troubleshooting
 
 **1. "Expo is not recognized" Error**
-- Ensure you have run `npm install` in the root directory to generate the `node_modules` folder.
+- Ensure you have run `npm install` in the `frontend` directory to generate the `node_modules` folder.
 
 **2. Backend "SSL handshake failed" (MongoDB Error)**
 - **Cause:** MongoDB Atlas blocks external connections by default.
