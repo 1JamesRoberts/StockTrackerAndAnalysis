@@ -119,7 +119,7 @@ export function ManagePositionModal({ visible, item, currentPrice, onClose }: Ma
   return (
     <Modal visible={visible} animationType="slide" transparent>
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.modalOverlay}
       >
         <View style={styles.modalContent}>
